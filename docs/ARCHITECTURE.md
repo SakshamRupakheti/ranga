@@ -22,18 +22,18 @@ Image generation will require asynchronous jobs with persisted status, retries, 
 
 ## Feasibility boundaries
 
-| Capability | Current status | Conditions before release |
-| --- | --- | --- |
-| Native editable text, simple shapes, raster uploads, PNG/SVG/JSON export | Implemented locally | Complete broader accessibility/browser testing |
-| References selected from user-owned/permitted uploads | Implemented locally | Cloud asset retention/authorization when sync is introduced |
-| Accounts, cloud projects, background jobs | Deferred | Provider selection, credentials, billing limits, isolation tests |
-| AI design conversation and validated edit commands | Deferred; no requests made | Secure OpenAI setup, current models/pricing review, cost controls, prompt-injection tests and evaluations |
-| AI-generated images | Deferred | Current generation/editing API and pricing review; preserve raster labeling |
-| Pinterest boards and Pins | Official API supports authorized account content; no connection built | Developer app/access tier approval, permitted scopes/endpoints, attribution and policy review |
-| Unrestricted public Pinterest search | Not promised | Confirm exact available endpoint and granted access; do not scrape |
-| Canva creation/import/export | Official Connect APIs exist; no connection built | OAuth app setup, scopes, review requirements, import/export format verification with actual files |
-| Arbitrary Canva layer editing/round-trip fidelity | Not promised | Separate capability investigation; SVG export from Ranga is not a claim that Canva accepts it as a native editable document |
-| Public launch | Blocked by launch checklist | Auth, storage, security, legal review, domain/HTTPS, identity and integrations |
+| Capability                                                               | Current status                                                        | Conditions before release                                                                                                   |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Native editable text, simple shapes, raster uploads, PNG/SVG/JSON export | Implemented locally                                                   | Complete broader accessibility/browser testing                                                                              |
+| References selected from user-owned/permitted uploads                    | Implemented locally                                                   | Cloud asset retention/authorization when sync is introduced                                                                 |
+| Accounts, cloud projects, background jobs                                | Deferred                                                              | Provider selection, credentials, billing limits, isolation tests                                                            |
+| AI design conversation and validated edit commands                       | Deferred; no requests made                                            | Secure OpenAI setup, current models/pricing review, cost controls, prompt-injection tests and evaluations                   |
+| AI-generated images                                                      | Deferred                                                              | Current generation/editing API and pricing review; preserve raster labeling                                                 |
+| Pinterest boards and Pins                                                | Official API supports authorized account content; no connection built | Developer app/access tier approval, permitted scopes/endpoints, attribution and policy review                               |
+| Unrestricted public Pinterest search                                     | Not promised                                                          | Confirm exact available endpoint and granted access; do not scrape                                                          |
+| Canva creation/import/export                                             | Official Connect APIs exist; no connection built                      | OAuth app setup, scopes, review requirements, import/export format verification with actual files                           |
+| Arbitrary Canva layer editing/round-trip fidelity                        | Not promised                                                          | Separate capability investigation; SVG export from Ranga is not a claim that Canva accepts it as a native editable document |
+| Public launch                                                            | Blocked by launch checklist                                           | Auth, storage, security, legal review, domain/HTTPS, identity and integrations                                              |
 
 Pinterest access tiers and authorized-account Pin APIs were checked in official documentation. Canva's official Connect overview was located; detailed integration review, format compatibility, and pricing are deliberately left to the API milestone. Ranga does not use the user's connected assistant plugins as an undocumented backend for application visitors.
 
