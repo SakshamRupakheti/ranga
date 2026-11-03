@@ -74,4 +74,8 @@ See [architecture](docs/ARCHITECTURE.md), [decisions](docs/DECISIONS.md), [recip
 
 This is a tested local development application, not a public hosted service. Public deployment, remote collaboration, verified email delivery, managed PostgreSQL/object storage, scheduled backups, monitoring, legal pages, a custom domain, and full browser/accessibility review remain open. Persistent groups, multiple artboards, snapping/guides, crop masks, custom fonts, shared brand kits, and advanced templates are the next editor phase.
 
-Git is initialized with main, develop, and feature branches. The available GitHub connector does not provide repository creation, and no authenticated write remote or GitHub CLI was available. No remote repository, hosted CI result, branch protection, or deployment is claimed. Connect an authorized empty private repository before pushing; the prepared GitHub Actions checks become active only then. Never put tokens in remote URLs or tracked files.
+## Open source
+
+Ranga is published under the [MIT license](LICENSE) at [SakshamRupakheti/ranga](https://github.com/SakshamRupakheti/ranga). Contributions are welcome; read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Dependencies retain their own licenses. Uploaded user artwork and external websites are not covered by Ranga's license.
+
+The source repository is public. The application is still a local development preview, with hosting readiness tracked separately. GitHub Actions checks are configured; a committed workflow file alone is not proof of a successful hosted run. No deployment or branch-protection configuration is implied.

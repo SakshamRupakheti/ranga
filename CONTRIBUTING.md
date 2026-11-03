@@ -26,4 +26,4 @@ Check light/dark themes, phone layouts, direct canvas transforms, exports, and r
 
 ## Review and release
 
-Describe the concrete behavior, validation, and remaining limitations. Update TASKS.md, architecture decisions, and verification evidence. External APIs, paid services, public deployment, and third-party account integrations are outside the current milestone. The launch checklist must be completed before public release. GitHub CI is prepared but remains inactive until a private remote is connected and pushed.
+Describe the concrete behavior, validation, and remaining limitations. Update TASKS.md, architecture decisions, and verification evidence. External APIs, paid services, public deployment, and third-party account integrations are outside the current milestone. The launch checklist must be completed before public release. The public repository is https://github.com/SakshamRupakheti/ranga. Contributions are provided under the MIT license. Check the Actions tab for actual hosted check results.

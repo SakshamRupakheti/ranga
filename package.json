@@ -42,5 +42,10 @@
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "6.0.3"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SakshamRupakheti/ranga.git"
   }
 }
