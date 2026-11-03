@@ -184,6 +184,14 @@ export function Properties({
                     onChange={(charSpacing) => onChange({ charSpacing })}
                   />
                 </div>
+                <NumberField
+                  label="Line height"
+                  value={l.lineHeight ?? 1.04}
+                  min={0.5}
+                  max={4}
+                  step={0.05}
+                  onChange={(lineHeight) => onChange({ lineHeight })}
+                />
                 <div className="segmented">
                   <button
                     className={l.fontWeight === "bold" ? "active" : ""}

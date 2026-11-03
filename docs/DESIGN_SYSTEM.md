@@ -29,3 +29,11 @@ The Form & Field and A Fresh Perspective templates are authored original composi
 ## Follow-up
 
 Revisit tiny secondary labels and touch target sizes during full accessibility testing. Browser and OS font metrics may vary; exported SVGs retain text rather than outlining it. Color contrast needs a formal audit before public release.
+
+## Collaboration and dark theme
+
+Dark paper `#20251f`, panel `#282e27`, text `#e5e8df`, muted `#aab3a1`, border `#444e3e`, soft `#343d2e`, accent `#ef8c70`. The canvas artwork keeps its own colors when application chrome changes theme. Theme choice persists in the browser.
+
+Shared project previews are rendered from real canvases. Avatars use authenticated initials; remote selections and cursors show authenticated names. These indicators carry actual collaboration state, not decorative motion. Comments, sharing and history use compact tabs. Offline/saving/server-saved states stay distinct.
+
+Manual creative tools use ordinary external links and explicit copy/import actions. No faux assistant chat or simulated generation progress is present. Moodboards preserve source attribution and distinguish inspiration from owned/permitted assets.

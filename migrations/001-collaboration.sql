@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS ranga_project (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, title TEXT NOT NULL, state BLOB NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS ranga_member (project_id TEXT NOT NULL REFERENCES ranga_project(id) ON DELETE CASCADE,user_id TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('editor','commenter','viewer')),PRIMARY KEY(project_id,user_id));
+CREATE TABLE IF NOT EXISTS ranga_invite (id TEXT PRIMARY KEY,project_id TEXT NOT NULL REFERENCES ranga_project(id) ON DELETE CASCADE,token_hash TEXT UNIQUE NOT NULL,role TEXT NOT NULL,email TEXT,expires_at INTEGER NOT NULL,used_by TEXT,revoked INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS ranga_asset (id TEXT PRIMARY KEY,project_id TEXT NOT NULL REFERENCES ranga_project(id) ON DELETE CASCADE,mime TEXT NOT NULL,data BLOB NOT NULL,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS ranga_comment (id TEXT PRIMARY KEY,project_id TEXT NOT NULL REFERENCES ranga_project(id) ON DELETE CASCADE,author_id TEXT NOT NULL,author_name TEXT NOT NULL,parent_id TEXT,element_id TEXT,body TEXT NOT NULL,resolved INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS ranga_version (id TEXT PRIMARY KEY,project_id TEXT NOT NULL REFERENCES ranga_project(id) ON DELETE CASCADE,author_name TEXT NOT NULL,document TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS ranga_activity (id TEXT PRIMARY KEY,project_id TEXT NOT NULL REFERENCES ranga_project(id) ON DELETE CASCADE,author_name TEXT NOT NULL,action TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS member_user ON ranga_member(user_id);
+CREATE INDEX IF NOT EXISTS asset_project ON ranga_asset(project_id);
+CREATE INDEX IF NOT EXISTS comment_project ON ranga_comment(project_id);

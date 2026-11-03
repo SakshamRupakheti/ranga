@@ -181,7 +181,7 @@ test("local raster upload and references persist separately", async ({
     page.getByRole("button", { name: "test-logo.png", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "References", exact: true }).click();
-  await page.locator("input[type=file]").last().setInputFiles({
+  await page.getByLabel("Upload reference image").setInputFiles({
     name: "reference.png",
     mimeType: "image/png",
     buffer: png,

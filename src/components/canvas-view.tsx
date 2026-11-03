@@ -16,10 +16,14 @@ import {
   ActiveSelection,
   util,
 } from "fabric";
+import { MousePointer2 } from "lucide-react";
+import { imageData } from "@/lib/api";
 import type { DesignDocument, Layer } from "@/lib/document";
+import type { Presence } from "@/lib/shared-document";
 type NamedObject = FabricObject & { rangaId?: string };
 export interface CanvasHandle {
   png: () => string;
+  jpeg: () => string;
   svg: () => string;
   thumbnail: () => string;
   select: (id: string) => void;
@@ -28,13 +32,17 @@ type Props = {
   document: DesignDocument;
   selected: string | null;
   zoom: number | null;
+  editable?: boolean;
+  people?: Presence[];
+  commentPoint?: { x: number; y: number } | null;
+  onCursor?: (point: { x: number; y: number } | null) => void;
   onChange: (layers: Layer[]) => void;
   onSelect: (id: string | null) => void;
   onScale: (scale: number) => void;
   onError: (message: string) => void;
 };
-async function makeObject(l: Layer): Promise<NamedObject> {
-  const props = {
+function common(l: Layer, editable: boolean) {
+  return {
     left: l.x,
     top: l.y,
     originX: "left" as const,
@@ -45,8 +53,12 @@ async function makeObject(l: Layer): Promise<NamedObject> {
     visible: l.visible,
     selectable: !l.locked,
     evented: !l.locked,
-    lockMovementX: l.locked,
-    lockMovementY: l.locked,
+    lockMovementX: l.locked || !editable,
+    lockMovementY: l.locked || !editable,
+    lockScalingX: !editable,
+    lockScalingY: !editable,
+    lockRotation: !editable,
+    hasControls: editable,
     flipX: l.flipX ?? false,
     flipY: l.flipY ?? false,
     strokeWidth: 0,
@@ -56,48 +68,66 @@ async function makeObject(l: Layer): Promise<NamedObject> {
     cornerSize: 9,
     transparentCorners: false,
   };
-  let obj: NamedObject;
+}
+function textProps(l: Layer) {
+  return {
+    text: l.text ?? "",
+    width: l.width,
+    fontSize: l.fontSize ?? 40,
+    fontFamily: l.fontFamily ?? "Arial",
+    fontWeight: l.fontWeight ?? "normal",
+    textAlign: l.textAlign ?? "left",
+    charSpacing: l.charSpacing ?? 0,
+    lineHeight: l.lineHeight ?? 1.04,
+    scaleX: 1,
+    scaleY: 1,
+  };
+}
+async function makeObject(l: Layer, editable: boolean): Promise<NamedObject> {
+  const props = common(l, editable);
+  let o: NamedObject;
   if (l.type === "text")
-    obj = new Textbox(l.text ?? "", {
-      ...props,
-      width: l.width,
-      fontSize: l.fontSize ?? 40,
-      fontFamily: l.fontFamily ?? "Arial",
-      fontWeight: l.fontWeight ?? "normal",
-      textAlign: l.textAlign ?? "left",
-      charSpacing: l.charSpacing ?? 0,
-      lineHeight: 1.04,
-    });
+    o = new Textbox(l.text ?? "", { ...props, ...textProps(l), editable });
   else if (l.type === "ellipse")
-    obj = new Ellipse({ ...props, rx: l.width / 2, ry: l.height / 2 });
+    o = new Ellipse({ ...props, rx: l.width / 2, ry: l.height / 2 });
   else if (l.type === "image") {
-    obj = await FabricImage.fromURL(l.src!);
-    obj.set({
-      ...props,
-      scaleX: l.width / obj.width,
-      scaleY: l.height / obj.height,
-    });
-  } else obj = new Rect({ ...props, width: l.width, height: l.height });
-  obj.rangaId = l.id;
-  return obj;
+    o = await FabricImage.fromURL(await imageData(l.src!));
+    o.set({ ...props, scaleX: l.width / o.width, scaleY: l.height / o.height });
+  } else o = new Rect({ ...props, width: l.width, height: l.height });
+  o.rangaId = l.id;
+  return o;
 }
 export const CanvasView = forwardRef<CanvasHandle, Props>(function CanvasView(
-  { document: doc, selected, zoom, onChange, onSelect, onScale, onError },
+  {
+    document: doc,
+    selected,
+    zoom,
+    editable = true,
+    people = [],
+    commentPoint,
+    onCursor,
+    onChange,
+    onSelect,
+    onScale,
+    onError,
+  },
   ref,
 ) {
-  const host = useRef<HTMLDivElement>(null);
-  const element = useRef<HTMLCanvasElement>(null);
-  const canvas = useRef<Canvas | null>(null);
-  const docRef = useRef(doc);
-  const callbacks = useRef({ onChange, onSelect, onScale, onError });
-  const scale = useRef(1);
-  const rendering = useRef(false);
-  const nativeUpdate = useRef(false);
-  const selectedId = useRef<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const host = useRef<HTMLDivElement>(null),
+    element = useRef<HTMLCanvasElement>(null),
+    canvas = useRef<Canvas | null>(null),
+    docRef = useRef(doc),
+    callbacks = useRef({ onChange, onSelect, onScale, onError }),
+    scale = useRef(1),
+    rendering = useRef(false),
+    selectedId = useRef<string | null>(null),
+    rendered = useRef(new Map<string, Layer>()),
+    lastCursor = useRef(0);
+  const [ready, setReady] = useState(false),
+    [displayScale, setDisplayScale] = useState(1);
   useEffect(() => {
-    callbacks.current = { onChange, onSelect, onScale, onError };
     docRef.current = doc;
+    callbacks.current = { onChange, onSelect, onScale, onError };
   }, [doc, onChange, onSelect, onScale, onError]);
   useEffect(() => {
     selectedId.current = selected;
@@ -106,13 +136,11 @@ export const CanvasView = forwardRef<CanvasHandle, Props>(function CanvasView(
     const active = c.getActiveObject() as NamedObject | undefined;
     if (active?.rangaId === selected) return;
     if (selected) {
-      const object = (c.getObjects() as NamedObject[]).find(
+      const o = (c.getObjects() as NamedObject[]).find(
         (o) => o.rangaId === selected,
       );
-      if (object?.selectable) c.setActiveObject(object);
-    } else if (!(active instanceof ActiveSelection)) {
-      c.discardActiveObject();
-    }
+      if (o?.selectable) c.setActiveObject(o);
+    } else if (!(active instanceof ActiveSelection)) c.discardActiveObject();
     c.requestRenderAll();
   }, [selected]);
   useEffect(() => {
@@ -123,12 +151,22 @@ export const CanvasView = forwardRef<CanvasHandle, Props>(function CanvasView(
       enableRetinaScaling: true,
     });
     canvas.current = c;
-    function commit() {
+    function commit(event: { target?: FabricObject }) {
       if (rendering.current) return;
-      const previous = docRef.current;
-      const objects = c.getObjects() as NamedObject[];
-      const layers = previous.layers.map((l) => {
-        const o = objects.find((o) => o.rangaId === l.id);
+      const target = event.target ?? c.getActiveObject();
+      const changed = new Set(
+        (target instanceof ActiveSelection
+          ? target.getObjects()
+          : target
+            ? [target]
+            : []
+        ).map((o) => (o as NamedObject).rangaId),
+      );
+      const layers = docRef.current.layers.map((l) => {
+        if (!changed.has(l.id)) return l;
+        const o = (c.getObjects() as NamedObject[]).find(
+          (o) => o.rangaId === l.id,
+        );
         if (!o) return l;
         let x = o.left,
           y = o.top,
@@ -156,17 +194,18 @@ export const CanvasView = forwardRef<CanvasHandle, Props>(function CanvasView(
           flipX: o.flipX,
           flipY: o.flipY,
           ...(o instanceof Textbox
-            ? { text: o.text, fontSize: (o.fontSize ?? 40) * Math.abs(sy) }
+            ? { text: o.text, fontSize: o.fontSize * Math.abs(sy) }
             : {}),
         };
       });
-      nativeUpdate.current = true;
+      for (const layer of layers)
+        if (changed.has(layer.id)) rendered.current.set(layer.id, layer);
       callbacks.current.onChange(layers);
     }
     function selection() {
       if (rendering.current) return;
-      const active = c.getActiveObject() as NamedObject | undefined;
-      selectedId.current = active?.rangaId ?? null;
+      selectedId.current =
+        (c.getActiveObject() as NamedObject | undefined)?.rangaId ?? null;
       callbacks.current.onSelect(selectedId.current);
     }
     c.on("object:modified", commit);
@@ -183,27 +222,115 @@ export const CanvasView = forwardRef<CanvasHandle, Props>(function CanvasView(
   }, []);
   useEffect(() => {
     if (!ready || !canvas.current) return;
-    if (nativeUpdate.current) {
-      nativeUpdate.current = false;
-      return;
-    }
     const c = canvas.current;
     let cancelled = false;
     rendering.current = true;
-    Promise.all(doc.layers.map(makeObject))
-      .then((objects) => {
-        if (cancelled) return;
-        const selected = selectedId.current;
-        c.discardActiveObject();
-        c.remove(...c.getObjects());
-        c.backgroundColor = doc.background;
-        c.add(...objects);
-        if (selected) {
-          const object = objects.find((o) => o.rangaId === selected);
-          if (object && object.selectable) {
-            c.setActiveObject(object);
-            callbacks.current.onSelect(selected);
+    Promise.all(
+      doc.layers.map(async (layer) => {
+        const existing = (c.getObjects() as NamedObject[]).find(
+            (o) => o.rangaId === layer.id,
+          ),
+          old = rendered.current.get(layer.id);
+        if (
+          !existing ||
+          old?.type !== layer.type ||
+          (layer.type === "image" && old?.src !== layer.src)
+        )
+          return {
+            layer,
+            object: await makeObject(layer, editable),
+            fresh: true,
+          };
+        return { layer, object: existing, fresh: false };
+      }),
+    )
+      .then((items) => {
+        if (cancelled) {
+          for (const item of items) if (item.fresh) item.object.dispose();
+          return;
+        }
+        const ids = new Set(items.map((i) => i.layer.id));
+        for (const o of c.getObjects() as NamedObject[])
+          if (!ids.has(o.rangaId!)) {
+            c.remove(o);
+            o.dispose();
           }
+        c.backgroundColor = doc.background;
+        items.forEach(({ layer: l, object: o, fresh }, index) => {
+          if (fresh) {
+            const old = (c.getObjects() as NamedObject[]).find(
+              (x) => x.rangaId === l.id,
+            );
+            if (old) {
+              c.remove(old);
+              old.dispose();
+            }
+            c.add(o);
+          } else if (
+            JSON.stringify(rendered.current.get(l.id)) !== JSON.stringify(l)
+          ) {
+            o.set(common(l, editable));
+            if (o instanceof Textbox) {
+              const selection = o.selectionStart,
+                previous = o.text;
+              let prefix = 0;
+              while (
+                prefix < previous.length &&
+                prefix < (l.text ?? "").length &&
+                previous[prefix] === (l.text ?? "")[prefix]
+              )
+                prefix++;
+              o.set(textProps(l));
+              if (o.isEditing) {
+                const position = Math.max(
+                  0,
+                  Math.min(
+                    o.text.length,
+                    selection +
+                      (prefix < selection
+                        ? o.text.length - previous.length
+                        : 0),
+                  ),
+                );
+                o.selectionStart = position;
+                o.selectionEnd = position;
+              }
+              o.initDimensions();
+            } else if (o instanceof FabricImage)
+              o.set({ scaleX: l.width / o.width, scaleY: l.height / o.height });
+            else if (o instanceof Ellipse)
+              o.set({
+                rx: l.width / 2,
+                ry: l.height / 2,
+                scaleX: 1,
+                scaleY: 1,
+              });
+            else
+              o.set({ width: l.width, height: l.height, scaleX: 1, scaleY: 1 });
+          }
+          o.set({
+            selectable: !l.locked,
+            evented: !l.locked,
+            lockMovementX: l.locked || !editable,
+            lockMovementY: l.locked || !editable,
+            lockScalingX: !editable,
+            lockScalingY: !editable,
+            lockRotation: !editable,
+            hasControls: editable,
+          });
+          if (o instanceof Textbox) o.editable = editable;
+          o.setCoords();
+          c.moveObjectTo(o, index);
+        });
+        rendered.current = new Map(
+          doc.layers.map((l) => [l.id, structuredClone(l)]),
+        );
+        const active = c.getActiveObject() as NamedObject | undefined;
+        if (selectedId.current && active?.rangaId !== selectedId.current) {
+          const o = items.find(
+            (i) => i.layer.id === selectedId.current,
+          )?.object;
+          if (o?.selectable) c.setActiveObject(o);
         }
         c.requestRenderAll();
         rendering.current = false;
@@ -219,20 +346,25 @@ export const CanvasView = forwardRef<CanvasHandle, Props>(function CanvasView(
     return () => {
       cancelled = true;
     };
-  }, [doc, ready]);
+  }, [doc, ready, editable]);
   useEffect(() => {
     if (!ready || !host.current) return;
     function resize() {
       const c = canvas.current;
       if (!c || !host.current) return;
-      const available = host.current.getBoundingClientRect();
-      const fitted = Math.min(
-        (available.width - 80) / doc.width,
-        (available.height - 90) / doc.height,
-        1,
-      );
-      const next = zoom ?? Math.max(0.12, fitted);
+      const bounds = host.current.getBoundingClientRect();
+      const next =
+        zoom ??
+        Math.max(
+          0.12,
+          Math.min(
+            (bounds.width - 80) / doc.width,
+            (bounds.height - 90) / doc.height,
+            1,
+          ),
+        );
       scale.current = next;
+      setDisplayScale(next);
       c.setDimensions({ width: doc.width * next, height: doc.height * next });
       c.setViewportTransform([next, 0, 0, next, 0, 0]);
       c.requestRenderAll();
@@ -255,6 +387,16 @@ export const CanvasView = forwardRef<CanvasHandle, Props>(function CanvasView(
           enableRetinaScaling: false,
         });
       },
+      jpeg: () => {
+        if (!canvas.current || rendering.current)
+          throw new Error("Wait for the canvas to finish updating.");
+        return canvas.current.toDataURL({
+          format: "jpeg",
+          quality: 0.95,
+          multiplier: 1 / scale.current,
+          enableRetinaScaling: false,
+        });
+      },
       thumbnail: () =>
         canvas.current?.toDataURL({
           format: "png",
@@ -273,11 +415,11 @@ export const CanvasView = forwardRef<CanvasHandle, Props>(function CanvasView(
       },
       select: (id) => {
         const c = canvas.current;
-        const obj = (c?.getObjects() as NamedObject[] | undefined)?.find(
+        const o = (c?.getObjects() as NamedObject[] | undefined)?.find(
           (o) => o.rangaId === id,
         );
-        if (c && obj && obj.selectable) {
-          c.setActiveObject(obj);
+        if (c && o && o.selectable) {
+          c.setActiveObject(o);
           c.requestRenderAll();
           selectedId.current = id;
           callbacks.current.onSelect(id);
@@ -288,9 +430,73 @@ export const CanvasView = forwardRef<CanvasHandle, Props>(function CanvasView(
   );
   return (
     <div className="canvas-stage" ref={host}>
-      <div className="artboard-wrap">
+      <div
+        className="artboard-wrap"
+        onPointerMove={(e) => {
+          if (Date.now() - lastCursor.current < 70) return;
+          lastCursor.current = Date.now();
+          const bounds = e.currentTarget.getBoundingClientRect();
+          onCursor?.({
+            x: (e.clientX - bounds.left) / displayScale,
+            y: (e.clientY - bounds.top) / displayScale,
+          });
+        }}
+        onPointerLeave={() => onCursor?.(null)}
+      >
+        <div className="collaborative-overlays" aria-hidden="true">
+          {commentPoint && (
+            <span
+              className="comment-marker"
+              style={{
+                left: commentPoint.x * displayScale,
+                top: commentPoint.y * displayScale,
+              }}
+            >
+              Comment
+            </span>
+          )}
+          {people.map((person) => {
+            const target = doc.layers.find((l) => l.id === person.selected);
+            const color = ["#276c89", "#9b5134", "#62783d", "#8c4c73"][
+              [...person.userId].reduce((sum, c) => sum + c.charCodeAt(0), 0) %
+                4
+            ];
+            return (
+              <div key={person.connectionId}>
+                {target && (
+                  <div
+                    className="remote-selection"
+                    style={{
+                      left: target.x * displayScale,
+                      top: target.y * displayScale,
+                      width: target.width * displayScale,
+                      height: target.height * displayScale,
+                      transform: `rotate(${target.angle}deg)`,
+                      borderColor: color,
+                    }}
+                  >
+                    <span style={{ background: color }}>{person.name}</span>
+                  </div>
+                )}
+                {person.cursor && (
+                  <span
+                    className="remote-cursor"
+                    style={{
+                      left: person.cursor.x * displayScale,
+                      top: person.cursor.y * displayScale,
+                      color,
+                    }}
+                  >
+                    <MousePointer2 size={14} />
+                    {person.name}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
         <span className="artboard-label">
-          {doc.title}{" "}
+          {doc.title}
           <span>
             {doc.width} × {doc.height}
           </span>

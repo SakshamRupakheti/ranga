@@ -1,77 +1,77 @@
 # Ranga
 
-A graphic design workspace built around editable compositions. The first milestone runs locally without API keys, accounts, or paid services. The product name is **Ranga**; its logo will be created using Ranga itself. The current header is plain typography, not a finished logo.
+A native graphic design workspace with editable layers, persistent local collaboration, and manual Pinterest/ChatGPT handoff. The website name remains **Ranga**. Its final logo will be made using Ranga itself; the current wordmark is plain typography.
 
 ## Run locally
 
-Use Node.js 24 LTS and npm. Dependencies are pinned in `package.json` and `package-lock.json`.
+Use Node.js 24 and npm. Dependencies are pinned.
 
 ```sh
 npm ci
+npm run service
+```
+
+In a second terminal:
+
+```sh
 npm run dev -- --port 3001
 ```
 
-Open <http://127.0.0.1:3001>. Choose **Start designing** to edit the original Form & Field composition, or open the workspace for a blank canvas and other starting points.
+Open <http://127.0.0.1:3001/projects>. Browser projects work without an account. Register a Ranga account for shared projects. Use **New shared design**, or **Share → Create shared copy** in an existing local project. Use another browser profile to register a second account and accept an invitation. The current service is loopback-only, so links work on this computer; remote team access requires the hosted infrastructure milestone.
+
+No OpenAI, Pinterest, Canva, or paid-service credentials are required. Internal application HTTP endpoints and WebSockets power actual accounts and collaboration.
+
+## Working features
+
+- Native text, rectangles, ellipses, raster uploads, logos, direct text editing, drag/resize/rotate, precise properties, line height, stacking, locking, visibility, duplication, multi-selection, undo/redo, zoom and preview.
+- Separate browser and shared projects, search/sort, rename/duplicate/delete, and canvas-generated thumbnails.
+- Email/password accounts using Better Auth, sessions, profile editing, account deletion, and password-reset flow using a private local development outbox. Email delivery and mailbox verification are not configured.
+- Persistent Yjs editing with field-level changes, collaborative text, presence, selections/cursors, offline reconnect, per-user undo, server-enforced owner/editor/commenter/viewer roles, expiring invitations, and immediate membership revocation.
+- Live project/layer/coordinate comments, replies, resolve/reopen, activity, notifications, shared snapshots and owner-controlled restoration.
+- Pinterest/source links with attribution; permitted file/clipboard images, notes, collections, ordering, selection, and reference comparison. Source URLs are stored without scraping or downloading their images.
+- External ChatGPT shortcut, deterministic design brief/prompt builder, exact JSON recipe schema, validation before import, and separately editable supported layers.
+- PNG/JPEG at document resolution, SVG with text/shapes and embedded images, portable JSON backups, a local brand kit, and light/dark themes.
+
+## Data and limits
+
+Browser projects and the brand kit live in IndexedDB and are accessible to anyone using that browser profile. Shared projects, accounts, comments, versions, assets, and previews live in `.ranga-data/ranga.sqlite` on the local server. A generated session secret and password-reset outbox also live in that ignored directory. Keep it private. Shared editors cache document state per account/project in IndexedDB for reconnecting. Browser caches are not encrypted and are not a substitute for server authorization.
+
+Sharing creates an explicit copy; no browser project is uploaded automatically. Shared assets are fetched through authenticated endpoints and referenced by ID in collaboration messages. They are stored in separate SQLite binary tables in this development profile. Production PostgreSQL and object storage remain planned.
+
+Uploads: PNG/JPEG/WebP, 5 MB, 24 megapixels, and at most 10,000 pixels per side. Documents: 100–4096 pixels per side, 200 layers, 12 references, 20 saved versions. Shared encoded documents are capped at 8 MB, and individual WebSocket messages at 1 MB. Recipes are limited to 2 MB. JSON backups are limited to 30 MB. SVG and external image URLs are rejected on upload/import; SVG export is supported. The private HTTP service also applies request and authentication rate limits.
+
+A backup contains the current composition and reference assets, not comments, collaborator permissions, snapshots, or the separate brand kit. Raster images stay raster layers. SVG fonts depend on the destination's installed fonts. Export before clearing browser data.
+
+## Verify
 
 ```sh
 npm run typecheck
 npm run lint
 npm test
 npm run build
-npm run start -- --port 3001
+npm run test:e2e
 ```
 
-`npm run test:e2e` runs real browser checks against a server on port 3001. Local tests use installed Google Chrome in an isolated temporary profile. CI installs Playwright Chromium, builds the application, and starts the production server automatically. No tests use the user's browser data.
+The production build uses `next build --webpack`; the original Windows host's Turbopack production CSS worker failed. Development uses Turbopack. Browser tests use separate Chrome profiles locally and Chromium in CI. Test services use temporary databases; no tests use the user's browser data. See [verification](docs/VERIFICATION.md).
 
-The production build uses Next.js's supported Webpack mode. Turbopack development works locally, but its production CSS worker failed on the initial Windows host. This is documented in `docs/VERIFICATION.md`.
-
-## What this milestone includes
-
-- Original responsive introduction, project workspace, graphic editor, brand kit, and settings.
-- Editable text, rectangles, ellipses, and raster images with stable layer IDs.
-- Native drag, resize, rotate, and direct text editing; precise property fields, fonts, alignment, spacing, color, opacity, visibility, locks, and stacking order.
-- Layer duplication/deletion, undo/redo, zoom, fit-to-view, and scrolling around a zoomed canvas.
-- Local autosave, project rename/duplicate/delete, and up to 20 explicit version snapshots per project.
-- PNG export at the document's pixel dimensions; SVG export with editable text/shapes and embedded raster images; schema-validated Ranga JSON backups and imports.
-- Local reference uploads, selection, and creative-direction notes, stored independently from exported artwork.
-- Reusable brand name, two colors, preferred typeface, and logo upload/application.
-- Clearly disclosed local storage and unavailable integration states, with complete local workspace deletion.
-
-Projects are genuinely empty on a fresh browser. The two included starting compositions are original editable templates, not fictitious customer projects.
-
-## Storage and limits
-
-Data stays in this browser profile's IndexedDB. There is **no account isolation, encryption layer, cloud sync, or server project database in this milestone**. Someone using the same browser profile can access the same projects. Clearing site data removes them. Export project backups regularly.
-
-PNG/JPG/WebP uploads are limited to 5 MB, 24 megapixels, and 10,000 pixels per side. SVG upload is deliberately not supported. Canvas dimensions are 100–4096 pixels per side, with at most 200 layers and 12 references. Imports are limited to 30 MB and validated; external image URLs and SVG data payloads are rejected. Browser storage quotas still apply. Save failures are displayed, not reported as success.
-
-A `.ranga.json` backup contains the current composition and reference images. Version snapshots and the separately stored brand kit are not included. SVG text depends on font availability in the destination tool. Imported and generated raster images remain single image layers; their contents are not independently editable.
-
-## Project structure
+## Project map
 
 ```text
-src/app/                 Next.js routes and design tokens
-src/components/          Application shell, canvas adapter, editor, inspector
-src/lib/document.ts      Versioned document schema, validated operations, history
-src/lib/storage.ts       IndexedDB persistence boundary
-src/lib/files.ts         Upload validation and downloads
-tests/                   Model tests and browser workflow tests
-docs/                    Architecture, design system, verification, launch checklist
-.github/                 Quality checks and dependency monitoring configuration
+src/app/                   Routes, custom visual tokens
+src/components/            Canvas adapter, editor, accounts, reference/team tools
+src/lib/document.ts        Renderer-independent document schema
+src/lib/shared-document.ts Field-level Yjs mapping
+src/lib/design-recipe.ts   Strict editable exchange schema and prompt builder
+src/lib/storage.ts         Browser project persistence
+src/server/                Authenticated local HTTP/WebSocket service
+migrations/                Tracked database changes
+public/                    Published recipe schema
 ```
 
-The editor is dynamically loaded so the landing page does not load Fabric.js. React state owns the document; Fabric.js handles interaction and rendering. The canvas adapter translates native edits back into the structured model. Future AI commands will use schema-validated operations, never arbitrary generated JavaScript.
+See [architecture](docs/ARCHITECTURE.md), [decisions](docs/DECISIONS.md), [recipe format](docs/DESIGN_RECIPE.md), [contributing](CONTRIBUTING.md), [task list](TASKS.md), and [launch checklist](docs/LAUNCH_CHECKLIST.md).
 
-## Not connected yet
+## Remaining infrastructure and editor work
 
-At the founder's request, API and service configuration is deferred. Authentication, managed PostgreSQL/object storage, AI, Pinterest, Canva, remote GitHub synchronization, and hosting are not represented as working features. Do not publish this development preview as a production service.
+This is a tested local development application, not a public hosted service. Public deployment, remote collaboration, verified email delivery, managed PostgreSQL/object storage, scheduled backups, monitoring, legal pages, a custom domain, and full browser/accessibility review remain open. Persistent groups, multiple artboards, snapping/guides, crop masks, custom fonts, shared brand kits, and advanced templates are the next editor phase.
 
-Persistent groups, masks, custom font uploads, a dedicated hand/pan tool, accessible canvas announcements, robust multi-tab conflict handling, and browser coverage beyond Chromium remain open. See [TASKS.md](TASKS.md).
-
-## GitHub connection
-
-Git is initialized locally. The available GitHub connector does not expose repository creation, and no GitHub CLI or authenticated write remote was available. No remote repository or deployment has been created.
-
-When service setup is resumed, create an **empty private** GitHub repository named `ranga` under the desired owner. Authorize this environment to write to it, or provide the repository URL through the connected GitHub app. Then add that verified URL as `origin` and push `main`, `develop`, and the feature branch. No tokens belong in remote URLs or project files. CI and Dependabot configuration become active only after pushing to GitHub. Enable branch protection for `main` and require the `quality` job after its first successful remote run.
-
-See [architecture and integration assessment](docs/ARCHITECTURE.md), [design system](docs/DESIGN_SYSTEM.md), [verification](docs/VERIFICATION.md), and [launch checklist](docs/LAUNCH_CHECKLIST.md).
+Git is initialized with main, develop, and feature branches. The available GitHub connector does not provide repository creation, and no authenticated write remote or GitHub CLI was available. No remote repository, hosted CI result, branch protection, or deployment is claimed. Connect an authorized empty private repository before pushing; the prepared GitHub Actions checks become active only then. Never put tokens in remote URLs or tracked files.

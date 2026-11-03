@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FolderOpen, Palette, Settings2, ArrowUpRight } from "lucide-react";
+import { ThemeToggle } from "./theme-toggle";
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   return (
@@ -28,6 +29,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <ThemeToggle />
+          <Link href="/login" className="text-link">
+            Ranga account
+          </Link>
           <span className="status-dot" /> Local workspace
           <p>
             Saved on this device.

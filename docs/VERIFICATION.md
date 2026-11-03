@@ -1,64 +1,60 @@
 # Verification record
 
-Date: 2026-11-02. Local Windows host, Node.js 24.15.0, Next.js 16.4.4, React 19.3.1, Fabric.js 7.4.0. Browser checks use isolated headless Google Chrome profiles, not the founder's browser state.
+Updated 2026-11-03. Windows, Node.js 24.15.0, Next.js 16.4.4, React 19.3.1, Fabric 7.4.0, Better Auth 1.7.15 and Yjs 13.6.33. Browser checks use isolated Chrome profiles, not the founder's browser data.
 
-## Results
+## Current results
 
-| Check                        | Observed result                                                                                                                             |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run typecheck`          | Passed, strict TypeScript                                                                                                                   |
-| `npm run lint`               | Passed, no remaining errors or warnings                                                                                                     |
-| `npm test`                   | 6 tests passed                                                                                                                              |
-| `npm run build`              | Passed with Webpack; all application routes prerendered                                                                                     |
-| Production browser suite     | 13 tests passed in 47.7 seconds against `next start` on localhost port 3002                                                                 |
-| Responsive screenshot review | Desktop 1440×1000, tablet 768×1024, phone 390×844; screenshots in `docs/screenshots/`                                                       |
-| Runtime dependency audit     | `npm audit --omit=dev --json`: 0 reported vulnerabilities                                                                                   |
-| Full dependency audit        | 16 moderate development-tool advisories inherited through the minimatch/lint dependency chain; 0 high/critical. Not ignored or force-fixed. |
-| Git whitespace check         | `git diff --check` passed                                                                                                                   |
-| Secret exclusion             | `.env.local` is ignored; `.env.example` contains no credentials                                                                             |
+| Check                         | Result                                                                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Strict TypeScript             | Passed                                                                                                                                            |
+| ESLint                        | Passed without errors or warnings                                                                                                                 |
+| Unit/service tests            | 10 passed; service test uses five isolated accounts and a temporary database                                                                      |
+| Production build              | Passed with Webpack; all application routes generated                                                                                             |
+| Development browser suite     | 15 passed in 1.4 minutes                                                                                                                          |
+| Production browser suite      | 15 passed in 1.2 minutes against port 3001                                                                                                        |
+| Runtime dependency audit      | Zero reported vulnerabilities                                                                                                                     |
+| Full dependency audit refresh | Could not run: automatic approval review reached its usage limit. Previous development-only findings remain tracked, not represented as resolved. |
+| Data/secret exclusion         | .env.local, .ranga-data/ and .ranga-test-data/ verified ignored                                                                                   |
 
-## Browser workflows actually exercised
+A package audit is not a full security audit. Local verification does not imply production hosting readiness.
 
-1. Landing navigation to an empty dashboard; no page runtime errors.
-2. Text content, font size, undo/redo, position, rotation, autosave, reload, and JSON/PNG/SVG export. PNG header dimensions were checked at 900×1200; SVG contains the actual text and matching viewBox.
-3. A real pointer drag of a canvas shape changes coordinates; those coordinates survive save/reload.
-4. Layer duplication, visibility, locking, stacking order, and deletion.
-5. A saved version restores the earlier composition after a text edit.
-6. A decoded PNG upload becomes a real image layer; selected references and creative notes remain separate document fields.
-7. Tablet/phone layout, collapsed phone panels, accessible text editing through the inspector, and export menu access.
-8. The original editorial composition renders as 10 editable layers without page errors.
-9. A JSON backup imports as a new project; project rename/duplicate/delete work; a remote-image payload is rejected.
-10. Brand-kit save/reload and applying actual font, shape-color, and background changes to a design.
-11. Native corner resizing and typing directly on the canvas survive saving and reopening.
-12. Landing, projects, brand, and settings fit a 390 px phone viewport without horizontal overflow.
-13. Moving a native multi-selection correctly persists both layers in document coordinates and survives reopening.
+## Collaboration and security
 
-## Model tests
+The service test makes authenticated HTTP/WebSocket requests and checks unauthenticated denial, cross-user project/image/thumbnail denial, owner-only access management and deletion, commenter/viewer restrictions, and email-restricted invitations. Reusing an accepted invitation after a role downgrade does not restore the old higher role.
 
-Template round trips and unique IDs; bounded validated commands; immutable single-layer updates; rejection of remote image URLs, SVG data, duplicate IDs, and nonfinite geometry; undo/redo branches; bounded history retention.
+Two simultaneous connections edit different properties, create objects, and modify the same text. Both converge. Unit tests confirm deletion conflicts, concurrent creation and undo that preserves the other user's changes. Accepted updates are persisted before acknowledgement.
+
+Tests create, reply to and resolve anchored comments; save and restore a version; reject a viewer's direct WebSocket mutation; revoke an active editor; reject the revoked invitation; merge offline changes on reconnect; and forcibly stop/restart the server. Projects, images, comments and sessions survive. Password-reset tests verify private outbox generation, token reuse rejection and invalidation of previous sessions. Account deletion removes owned projects.
+
+## Browser workflows
+
+- Two independently registered accounts create a graphic, explicitly share a local copy, upload a private image, create/accept an invitation, and see live presence/selections.
+- One user moves an object while the other edits text. Both receive changes. A real offline edit is queued and recovered on reconnection.
+- Comments, replies and resolution appear in the other browser. Revoking membership removes access immediately.
+- Manual Pinterest/source attribution, notes, collections and reference image import work. The deterministic prompt includes selected notes. ChatGPT opens as an external shortcut.
+- Invalid recipes are rejected. A valid recipe creates native editable layers, saves the preceding version and preserves references. JPEG decoding confirms the expected output width. JSON export and reload preserve the composition.
+- Shared previews, rename, duplicate, search, sort and delete work. Dark theme persists. Shared dashboard and role-restricted editors fit a phone viewport.
+- Commenter/viewer sessions show disabled mutation controls. A commenter selects a layer and posts a coordinate/layer comment. A viewer can read and locate the marker but cannot comment or edit.
+- All 13 original workflows still pass: local autosave/reload, properties, undo/redo, PNG/SVG/JSON exports, real pointer drag, native resize/direct text editing, multi-selection movement, layer controls, snapshots, raster/reference uploads, brand kit, backup import/project management, and desktop/tablet/phone layouts.
+
+## Visual evidence
+
+Actual screenshots are in docs/screenshots/: editor desktop/tablet/mobile, collaboration, dark creative handoff, dark shared dashboard and landing screens. Desktop collaboration, the dark creative panel and the dark shared dashboard were visually inspected. Test graphics are synthetic test content, not customer work.
 
 ## Corrections made during verification
 
-- A brand-kit loading race could overwrite a quick edit. The form now waits for initial loading, and later updates merge against the current state.
-- Async image/reference reads now merge into the current document rather than replacing edits made during file loading.
-- Canvas selection survives property updates; new objects become the selected object.
-- Direct canvas text changes enter document state and autosave while typing.
-- Internal editor navigation waits for persistence, and mobile displays save state.
-- A phone screenshot revealed a clipped landing specimen. Its mobile layout now sizes to its actual content, with a dedicated bounds assertion.
-- Two test fixtures were corrected: SVG line wrapping needs normalized text assertions, and the upload fixture needed a valid browser-encoded PNG.
+- Explicit offline/online handling closes transport, queues changes and reconnects. Awareness is resent after reconnection.
+- Native canvas edits update only transformed objects, preserving unrelated incoming edits. Unchanged Fabric instances are reused.
+- Recipe application waits for its server snapshot, preserves current references/brief and retains pasted input when application fails.
+- Read-only roles can select layers for discussion while mutation controls remain disabled. Server checks independently enforce the same restrictions.
+- Shared brand logos use authenticated asset uploads.
+- Accepted invitation reuse is idempotent, preventing role restoration after downgrade. Role changes close existing connections so clients reopen with current controls.
+- Tests target the reference upload input explicitly and distinguish application alerts from the framework route announcer.
 
-## Build/environment notes
+## Remaining work
 
-The first Turbopack production build failed while connecting to a CSS worker, both within and outside the sandbox. The installed Next.js CLI documentation supports `--webpack`; that mode compiled, typechecked, prerendered, and served the app successfully. `package.json` records the working build mode. Development still uses Turbopack.
+The service is single-process and loopback-only. Remote/public hosting, PostgreSQL/object storage migration, verified email delivery, hosted GitHub CI, HTTPS/domain, monitored scheduled backups and restore drills, load testing, full accessibility, Firefox/Safari, real touch devices, grouping/artboards and browser-only multi-tab conflict handling remain open.
 
-The default restricted execution sandbox also prevented the first localhost readiness request. The authorized local server and browser tests were run outside that network sandbox. This did not require any API key or external paid service.
+Recovery uses a private development outbox, not email. Email-restricted invitations match account email without proving mailbox ownership. Non-loopback service origins are rejected. No OpenAI, Pinterest or Canva APIs were called.
 
-ESLint 10 was evaluated but several current Next lint plugins advertise only ESLint 9-compatible peer ranges. The repository pins ESLint 9.39.5 for compatibility; its deprecation and development-only advisory chain remain tracked. Runtime dependencies have no reported advisories in the final audit. This is not a full security audit.
-
-## Not verified or not implemented
-
-Remote GitHub Actions, private GitHub repository creation, Vercel deployment, authentication, managed database/storage, AI, Pinterest/Canva OAuth, public-domain HTTPS, legal pages, accessibility conformance, Firefox/Safari, actual touch hardware, cloud backup/restore, group persistence, and multi-tab conflict handling. No success is claimed for these items.
-
-Local screenshots are evidence of the tested implementation, not mock product screenshots or fabricated customer work. This milestone is not launch-ready.
-
-Final follow-up: the mobile-page test passed after the poster stylesheet correction, including an assertion that the footer stays inside the poster bounds. The updated screenshot was visually reviewed. The final production rebuild also passed after this correction.
+The original editor baseline and build notes are retained in [VERIFICATION_LOCAL_EDITOR.md](VERIFICATION_LOCAL_EDITOR.md). Webpack remains the production build mode after the original Windows Turbopack CSS-worker failure. ESLint 9.39.5 is pinned for Next plugin compatibility; development-only advisories remain tracked.

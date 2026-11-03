@@ -1,10 +1,48 @@
 import { z } from "zod";
 
 export const colorSchema = z.string().regex(/^#[0-9a-f]{6}$/i);
-export const imageSchema = z
+export const embeddedImageSchema = z
   .string()
   .max(8_000_000)
   .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/);
+export const imageSchema = z.union([
+  embeddedImageSchema,
+  z.string().regex(/^\/api\/assets\/[a-f0-9-]{36}$/),
+]);
+export const sourceUrlSchema = z
+  .string()
+  .max(2000)
+  .url()
+  .refine((value) => {
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+    );
+  }, "Use an http or https source link.");
+export const referenceSchema = z
+  .object({
+    id: z.string().max(100),
+    name: z.string().max(120),
+    src: imageSchema.optional(),
+    sourceUrl: sourceUrlSchema.optional(),
+    note: z.string().max(2000).optional(),
+    collection: z.string().max(80).optional(),
+    selected: z.boolean(),
+    kind: z.enum(["inspiration", "owned"]).optional(),
+  })
+  .refine((r) => !!r.src || !!r.sourceUrl, "Add an image or source link.");
+export const briefSchema = z.object({
+  graphicType: z.string().max(100),
+  headline: z.string().max(500),
+  supportingText: z.string().max(3000),
+  audience: z.string().max(500),
+  style: z.string().max(1000),
+  typography: z.string().max(200),
+  instructions: z.string().max(3000),
+});
+export type DesignBrief = z.infer<typeof briefSchema>;
 export const layerSchema = z
   .object({
     id: z.string().min(1).max(100),
@@ -27,6 +65,7 @@ export const layerSchema = z
     fontWeight: z.enum(["normal", "bold"]).optional(),
     textAlign: z.enum(["left", "center", "right"]).optional(),
     charSpacing: z.number().min(-200).max(2000).optional(),
+    lineHeight: z.number().min(0.5).max(4).optional(),
     src: imageSchema.optional(),
     flipX: z.boolean().optional(),
     flipY: z.boolean().optional(),
@@ -43,16 +82,8 @@ export const documentSchema = z
     height: z.number().int().min(100).max(4096),
     background: colorSchema,
     layers: z.array(layerSchema).max(200),
-    references: z
-      .array(
-        z.object({
-          id: z.string(),
-          name: z.string().max(120),
-          src: imageSchema,
-          selected: z.boolean(),
-        }),
-      )
-      .max(12),
+    references: z.array(referenceSchema).max(12),
+    brief: briefSchema.optional(),
     direction: z.string().max(5000),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),

@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "ranga.recipe"
+    },
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "canvas": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 4096
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 4096
+        },
+        "background": {
+          "type": "string",
+          "pattern": "^#[0-9a-f]{6}$"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "background"
+      ],
+      "additionalProperties": false
+    },
+    "elements": {
+      "maxItems": 200,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "rect",
+              "ellipse",
+              "image"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "x": {
+            "type": "number",
+            "minimum": -20000,
+            "maximum": 20000
+          },
+          "y": {
+            "type": "number",
+            "minimum": -20000,
+            "maximum": 20000
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 20000
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 20000
+          },
+          "fill": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "angle": {
+            "type": "number",
+            "minimum": -360,
+            "maximum": 360
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "fontFamily": {
+            "type": "string",
+            "enum": [
+              "Arial",
+              "Georgia",
+              "Courier New",
+              "Impact"
+            ]
+          },
+          "fontSize": {
+            "type": "number",
+            "minimum": 6,
+            "maximum": 1000
+          },
+          "fontWeight": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "bold"
+            ]
+          },
+          "textAlign": {
+            "type": "string",
+            "enum": [
+              "left",
+              "center",
+              "right"
+            ]
+          },
+          "charSpacing": {
+            "type": "number",
+            "minimum": -200,
+            "maximum": 2000
+          },
+          "lineHeight": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 4
+          },
+          "assetId": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "x",
+          "y",
+          "width",
+          "height",
+          "fill"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "title",
+    "canvas",
+    "elements"
+  ],
+  "additionalProperties": false
+}

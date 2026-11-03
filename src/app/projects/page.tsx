@@ -11,6 +11,7 @@ import {
   Pencil,
   FolderOpen,
 } from "lucide-react";
+import { SharedProjects } from "@/components/shared-projects";
 import { Shell } from "@/components/shell";
 import {
   listProjects,
@@ -23,6 +24,8 @@ export default function Projects() {
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("recent");
   const upload = useRef<HTMLInputElement>(null);
   async function refresh() {
     setProjects(await listProjects());
@@ -116,6 +119,7 @@ export default function Projects() {
           </Link>
         </div>
       </section>
+      <SharedProjects />
       <section className="project-section">
         <div className="section-label">
           <h2>
@@ -151,6 +155,23 @@ export default function Projects() {
             }}
           />
         </div>
+        <div className="project-filters">
+          <input
+            className="project-search"
+            aria-label="Search local projects"
+            placeholder="Find a local project…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select
+            aria-label="Sort local projects"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+          >
+            <option value="recent">Recently edited</option>
+            <option value="name">Name A–Z</option>
+          </select>
+        </div>
         {error && (
           <p role="alert" className="error-banner">
             {error}
@@ -170,36 +191,69 @@ export default function Projects() {
           </div>
         ) : (
           <div className="projects-grid">
-            {projects.map(({ document: d, thumbnail }) => (
-              <article className="project-card" key={d.id}>
-                <Link href={`/editor?id=${d.id}`} className="project-thumbnail">
-                  {thumbnail ? (
-                    <Image
-                      src={thumbnail}
-                      alt={d.title}
-                      width={260}
-                      height={250}
-                      unoptimized
-                    />
-                  ) : (
-                    <span>{d.title}</span>
-                  )}
-                </Link>
-                <div className="project-card-info">
-                  <Link href={`/editor?id=${d.id}`}>
-                    <h3>{d.title}</h3>
+            {projects
+              .filter((p) =>
+                p.document.title.toLowerCase().includes(search.toLowerCase()),
+              )
+              .toSorted((a, b) =>
+                sort === "name"
+                  ? a.document.title.localeCompare(b.document.title)
+                  : b.document.updatedAt.localeCompare(a.document.updatedAt),
+              )
+              .map(({ document: d, thumbnail }) => (
+                <article className="project-card" key={d.id}>
+                  <Link
+                    href={`/editor?id=${d.id}`}
+                    className="project-thumbnail"
+                  >
+                    {thumbnail ? (
+                      <Image
+                        src={thumbnail}
+                        alt={d.title}
+                        width={260}
+                        height={250}
+                        unoptimized
+                      />
+                    ) : (
+                      <span>{d.title}</span>
+                    )}
                   </Link>
-                  <p>
-                    {d.width} × {d.height} px ·{" "}
-                    {new Date(d.updatedAt).toLocaleDateString()}
-                  </p>
-                  <div className="project-actions">
-                    <button
-                      aria-label={`Rename ${d.title}`}
-                      title="Rename"
-                      onClick={() => {
-                        const title = prompt("Project name", d.title)?.trim();
-                        if (title)
+                  <div className="project-card-info">
+                    <Link href={`/editor?id=${d.id}`}>
+                      <h3>{d.title}</h3>
+                    </Link>
+                    <p>
+                      {d.width} × {d.height} px ·{" "}
+                      {new Date(d.updatedAt).toLocaleDateString()}
+                    </p>
+                    <div className="project-actions">
+                      <button
+                        aria-label={`Rename ${d.title}`}
+                        title="Rename"
+                        onClick={() => {
+                          const title = prompt("Project name", d.title)?.trim();
+                          if (title)
+                            void action(async () => {
+                              const p = projects.find(
+                                (p) => p.document.id === d.id,
+                              )!;
+                              await saveProject({
+                                ...p,
+                                document: {
+                                  ...d,
+                                  title: title.slice(0, 120),
+                                  updatedAt: new Date().toISOString(),
+                                },
+                              });
+                            });
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        aria-label={`Duplicate ${d.title}`}
+                        title="Duplicate"
+                        onClick={() =>
                           void action(async () => {
                             const p = projects.find(
                               (p) => p.document.id === d.id,
@@ -208,56 +262,35 @@ export default function Projects() {
                               ...p,
                               document: {
                                 ...d,
-                                title: title.slice(0, 120),
+                                id: crypto.randomUUID(),
+                                title: `${d.title.slice(0, 110)} copy`,
                                 updatedAt: new Date().toISOString(),
                               },
+                              versions: [],
                             });
-                          });
-                      }}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      aria-label={`Duplicate ${d.title}`}
-                      title="Duplicate"
-                      onClick={() =>
-                        void action(async () => {
-                          const p = projects.find(
-                            (p) => p.document.id === d.id,
-                          )!;
-                          await saveProject({
-                            ...p,
-                            document: {
-                              ...d,
-                              id: crypto.randomUUID(),
-                              title: `${d.title.slice(0, 110)} copy`,
-                              updatedAt: new Date().toISOString(),
-                            },
-                            versions: [],
-                          });
-                        })
-                      }
-                    >
-                      <Copy size={14} />
-                    </button>
-                    <button
-                      aria-label={`Delete ${d.title}`}
-                      title="Delete"
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `Delete “${d.title}” and its saved versions from this browser?`,
+                          })
+                        }
+                      >
+                        <Copy size={14} />
+                      </button>
+                      <button
+                        aria-label={`Delete ${d.title}`}
+                        title="Delete"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `Delete “${d.title}” and its saved versions from this browser?`,
+                            )
                           )
-                        )
-                          void action(() => deleteProject(d.id));
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                            void action(() => deleteProject(d.id));
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))}
           </div>
         )}
       </section>

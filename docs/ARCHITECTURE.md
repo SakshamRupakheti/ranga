@@ -1,55 +1,50 @@
-# Product architecture and integration assessment
+# Ranga architecture
 
-Date: 2026-11-02. Scope: first local editor milestone. API setup deferred by the founder.
+Current scope: local native editor, collaborative workflow, and manual creative handoff. Updated 2026-11-03.
 
-## Implemented architecture
+## Application boundaries
 
-Next.js App Router, React, strict TypeScript, Tailwind 4 with custom CSS tokens, Lucide icons, Fabric.js 7, Zod validation, and IndexedDB through idb-keyval. No server secrets, authentication simulation, or paid API calls.
+Next.js App Router serves the UI, custom CSS/Tailwind tokens, and local API proxy. React owns the current scene, Fabric 7 renders/interacts with it, and Zod validates supported documents. The editor is dynamically loaded. The public introduction remains server rendered and does not load the canvas engine.
 
-The domain model is a versioned document with immutable layer identifiers, dimensions, background, flat text/shape/image layers, references, timestamps, and creative-direction notes. Model changes enter undo history, trigger an immediate visual update, and are persisted after a 500 ms debounce. IndexedDB writes are serialized. Internal navigation awaits the save. Closing/reloading while unsaved requests the browser's native warning. Explicit versions store the last 20 snapshots.
+Device projects use IndexedDB with serialized, debounced writes and bounded snapshots. Shared projects use a separate persistent Node.js HTTP/WebSocket service on loopback port 3003, proxied under `/api` by Next.js. Browser WebSockets connect directly to the service. This is deliberately not a serverless WebSocket deployment.
 
-The canvas renderer is an adapter, not the source of truth. Native transforms and typed text are reflected in the domain model. A raster asset is explicitly one image layer. Document backups do not rely on arbitrary Fabric object deserialization: supported types, geometry, colors, strings, asset URL forms, and IDs are validated first.
+## Shared document model
 
-The landing page is server rendered. Browser-only workspace state lives in client components. Fabric is dynamically loaded on the editor route. Design assets are not fetched from remote reference URLs. Supported uploads are decoded before storage; file type, size, and pixel count are restricted.
+Y.Map metadata holds dimensions/title/background/timestamps/brief. A Y.Map per layer holds independent object properties, with Y.Text for layer content. Y.Array holds stacking order. References use independent maps and an order array. The adapter writes changed fields rather than broadcasting complete Fabric JSON. Concurrent independent edits merge, text uses CRDT operations, deleted objects remain deleted against stale property updates, and rendering preserves unchanged Fabric instances.
 
-## Proposed cloud milestone
+Before accepting an update, the server applies it to a temporary copy, validates the full canonical scene, checks immutable project identity, checks every asset belongs to that project, and bounds encoded size. Only then does it apply, persist synchronously in SQLite WAL, broadcast and acknowledge. Version restoration is an owner-authorized transaction broadcast to all clients. Undo tracks only the local client's edit origin and is bounded at 100 entries.
 
-Retain Next.js on Vercel. Choose a managed PostgreSQL provider and object storage only during service setup. Prefer Drizzle for typed SQL, explicit migrations, and a small schema boundary. Keep large assets in object storage, not JSON database columns. Proposed entities: users, projects, project versions, assets, brand kits, connected accounts, and generation jobs.
+Editor caches use y-indexeddb, keyed by account/project. On reconnect, clients merge the server state then send the missing local update against its state vector. Explicit offline events close transport and queue work; network recovery reconnects. Heartbeats detect abandoned connections. Presence, cursor positions, selections, and connection IDs are transient and never persisted in project history.
 
-Before storing cloud data, integrate a maintained authentication provider, server-side ownership checks on every operation, secure sessions, and tests proving cross-user isolation. Design documents remain the same schema, while persistence moves behind an authenticated server repository. Local work must be offered for explicit migration rather than uploaded silently.
+## Authentication and authorization
 
-Image generation will require asynchronous jobs with persisted status, retries, cancellation, and limits. Model outputs must validate to supported design commands. Native typography and geometry changes should not regenerate images. Provider tokens stay server-side; encrypt connected-service tokens at rest, validate OAuth state/PKCE, and request only required scopes.
+Better Auth provides email/password hashing, HttpOnly session cookies, login/logout, reset tokens, and account deletion. The service requires the configured origin on mutations and WebSocket handshakes. All protected reads check membership. Every mutation checks the specific role; every document update revalidates session and current role. Active sockets are checked periodically and immediately closed after access revocation.
 
-## Feasibility boundaries
+Invitations use random 32-byte tokens, SHA-256 hashes in storage, seven-day expiry, optional email restriction, and single-user acceptance. Raw tokens are only shown to the owner and carried in the invitation URL fragment. Revoking a member invalidates their previously used invitations. No invitation emails are sent automatically.
 
-| Capability                                                               | Current status                                                        | Conditions before release                                                                                                   |
-| ------------------------------------------------------------------------ | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Native editable text, simple shapes, raster uploads, PNG/SVG/JSON export | Implemented locally                                                   | Complete broader accessibility/browser testing                                                                              |
-| References selected from user-owned/permitted uploads                    | Implemented locally                                                   | Cloud asset retention/authorization when sync is introduced                                                                 |
-| Accounts, cloud projects, background jobs                                | Deferred                                                              | Provider selection, credentials, billing limits, isolation tests                                                            |
-| AI design conversation and validated edit commands                       | Deferred; no requests made                                            | Secure OpenAI setup, current models/pricing review, cost controls, prompt-injection tests and evaluations                   |
-| AI-generated images                                                      | Deferred                                                              | Current generation/editing API and pricing review; preserve raster labeling                                                 |
-| Pinterest boards and Pins                                                | Official API supports authorized account content; no connection built | Developer app/access tier approval, permitted scopes/endpoints, attribution and policy review                               |
-| Unrestricted public Pinterest search                                     | Not promised                                                          | Confirm exact available endpoint and granted access; do not scrape                                                          |
-| Canva creation/import/export                                             | Official Connect APIs exist; no connection built                      | OAuth app setup, scopes, review requirements, import/export format verification with actual files                           |
-| Arbitrary Canva layer editing/round-trip fidelity                        | Not promised                                                          | Separate capability investigation; SVG export from Ranga is not a claim that Canva accepts it as a native editable document |
-| Public launch                                                            | Blocked by launch checklist                                           | Auth, storage, security, legal review, domain/HTTPS, identity and integrations                                              |
+The development profile has no email verification. Password resets are written to `.ranga-data/outbox` instead of sent. The local profile rejects non-loopback origins; it cannot be presented as production-ready authentication. See launch conditions for verified mailbox ownership, HTTPS/WSS, secrets, abuse prevention, session review, and infrastructure requirements.
 
-Pinterest access tiers and authorized-account Pin APIs were checked in official documentation. Canva's official Connect overview was located; detailed integration review, format compatibility, and pricing are deliberately left to the API milestone. Ranga does not use the user's connected assistant plugins as an undocumented backend for application visitors.
+## Storage and migrations
 
-## Official references
+SQLite tables separate project Yjs state, memberships, hashed invites, assets, thumbnails, comments, versions, activity, and migration history. Better Auth owns its account/session tables. Binary asset and thumbnail data are outside CRDT state. Every asset/preview fetch is membership-authorized and uses private/no-store caching. Image decoding and pixel/file limits run server-side. Client image caching is bounded and cleared on account transitions.
 
-- [Next.js installation](https://nextjs.org/docs/app/getting-started/installation), plus version-matched guides bundled in `node_modules/next/dist/docs/`.
-- [Fabric installation](https://www.fabricjs.com/docs/getting-started/installing/) and installed Fabric 7 type definitions.
-- [Pinterest access tiers](https://dev.pinterest.com/docs/key-concepts/access-tiers/).
-- [Pinterest authorized-account Pins](https://developers.pinterest.com/docs/api/v5/pins-list/).
-- [Canva Connect overview](https://www.canva.dev/docs/connect/).
+Migrations 001 and 002 are transactional and tracked by filename. Schema version 1 adds only optional document fields, preserving earlier local backups. Cloud PostgreSQL and private object storage are planned, not configured. The local SQLite choice and migration tradeoff are documented in DECISIONS.md.
 
-## Important technical decisions
+Account deletion removes owned projects and their assets/comments/versions through cascades, removes memberships, and anonymizes authored comments in remaining projects. Browser-only projects remain separate. Shared browser caches are local data; they are not encrypted and remain subject to browser-profile access. Scheduled backups, comprehensive retention, unused-asset collection, quotas, and multi-instance scaling remain production work.
 
-1. Local persistence first, explicitly requested, to make the design workflow useful before any API billing or account setup.
-2. Structured layers before AI so future AI edits preserve user control and do not flatten the entire composition.
-3. Four system typefaces initially, avoiding external font requests and unclear font licenses. Custom fonts need licensing and export fidelity work.
-4. Raster-only uploads until a dedicated SVG sanitizer and vector import model are reviewed.
-5. Bound local history and explicit versions; collaboration, conflict resolution, grouping, and masks remain follow-on editor work.
-6. Production uses supported `next build --webpack` because the initial Windows host's Turbopack production worker failed. Development remains Turbopack.
+## Manual integrations
+
+Pinterest and ChatGPT are normal external links with `noopener noreferrer`. No passwords, cookies, extension data, or third-party APIs are accessed. Reference URLs preserve attribution without fetching content. User-permitted image upload/clipboard import is explicit.
+
+The prompt builder deterministically serializes a design brief, selected reference descriptions, available image IDs, and the exact recipe schema. Recipe import treats generated data as untrusted, rejects unknown fields and arbitrary executable content, and maps supported entries into native editable layers. Applying preserves references and saves a preceding version. A flattened image stays a single raster layer.
+
+## Official implementation references
+
+- Next.js version-matched guides in `node_modules/next/dist/docs/`, and [route handlers](https://nextjs.org/docs/app/getting-started/route-handlers).
+- [Fabric documentation](https://www.fabricjs.com/docs/) and installed Fabric 7 type declarations.
+- [Better Auth installation](https://www.better-auth.com/docs/installation), [SQLite adapter](https://www.better-auth.com/docs/adapters/sqlite), and installed package exports/type declarations.
+- [Yjs shared types](https://docs.yjs.dev/api/shared-types) and [UndoManager](https://docs.yjs.dev/api/undo-manager).
+
+## Explicit limitations
+
+The current host is single-process and loopback-only. No public remote team access, email delivery, hosted database, managed storage, production backup schedule, legal policy, domain, external AI integration, or automated social-platform connection is implemented. Browser-only projects do not use the shared CRDT and can still conflict if edited in multiple tabs. Full accessibility, Firefox/Safari, real devices, persistent grouping/artboards, and realistic high-load benchmarking remain open.

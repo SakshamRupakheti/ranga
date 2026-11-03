@@ -1,10 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Users,
+  ScanEye,
   Undo2,
   Redo2,
   Download,
@@ -12,13 +14,11 @@ import {
   Square,
   Circle,
   ImagePlus,
-  Upload,
   Layers3,
   Eye,
   EyeOff,
   LockKeyhole,
   LockKeyholeOpen,
-  Trash2,
   Check,
   Plus,
   Minus,
@@ -50,10 +50,40 @@ import {
   type SavedProject,
 } from "@/lib/storage";
 import { readImage, download, safeFilename } from "@/lib/files";
-type Tab = "elements" | "references" | "brand" | "versions" | "assistant";
+import { api, post, imageData, type Session } from "@/lib/api";
+import { CollaborationClient } from "@/lib/collaboration-client";
+import {
+  canEdit,
+  type ProjectRole,
+  type Presence,
+} from "@/lib/shared-document";
+import { ThemeToggle } from "./theme-toggle";
+import { TeamPanel } from "./team-panel";
+import { CreativeHandoff } from "./creative-handoff";
+import { ReferenceBoard } from "./reference-board";
+type Tab =
+  "elements" | "references" | "brand" | "versions" | "assistant" | "team";
 export default function Editor() {
   const query = useSearchParams();
   const router = useRouter();
+  const sharedId = query.get("shared");
+  const collaboration = useRef<CollaborationClient | null>(null);
+  const access = useRef<ProjectRole>("owner");
+  const [role, setRole] = useState<ProjectRole>("owner");
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [teamSection, setTeamSection] = useState<"comments" | "sharing">(
+    "comments",
+  );
+  const [people, setPeople] = useState<Presence[]>([]);
+  const [eventVersion, setEventVersion] = useState(0);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [commentPoint, setCommentPoint] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [previewMode, setPreviewMode] = useState(false);
+  const editable = canEdit(role);
+
   const [doc, setDoc] = useState<DesignDocument | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("elements");
@@ -74,21 +104,67 @@ export default function Editor() {
   const history = useRef<History<DesignDocument> | null>(null);
   const canvas = useRef<CanvasHandle>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const refInput = useRef<HTMLInputElement>(null);
+
   const replacing = useRef<string | null>(null);
   const current = useRef<DesignDocument | null>(null);
   const currentVersions = useRef<SavedProject["versions"]>([]);
   const saveChain = useRef<Promise<void>>(Promise.resolve());
-  const initialized = useRef(false);
+  const [opening] = useState(() => ({
+    id: query.get("id"),
+    template: query.get("new"),
+    sharedId: query.get("shared"),
+  }));
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    let disposed = false;
     async function open() {
+      await Promise.resolve();
+      if (disposed) return;
       try {
         let initial: DesignDocument;
-        const id = query.get("id");
-        if (id) {
+        const { id, sharedId } = opening;
+        if (sharedId) {
+          const result = await api<{
+            document: DesignDocument;
+            role: ProjectRole;
+            user: { id: string };
+          }>(`/api/projects/${sharedId}`);
+          if (disposed) return;
+          initial = result.document;
+          access.current = result.role;
+          setRole(result.role);
+          setCurrentUserId(result.user.id);
+          collaboration.current = new CollaborationClient(
+            sharedId,
+            result.user.id,
+            result.role,
+            {
+              document: (value) => {
+                current.current = value;
+                setDoc(value);
+              },
+              status: setStatus,
+              presence: setPeople,
+              history: (canUndo, canRedo) =>
+                setHistoryState({ canUndo, canRedo }),
+              event: (event) => {
+                setEventVersion((v) => v + 1);
+                if (event === "comments")
+                  setNotice("Comments updated in Team.");
+              },
+              error: setError,
+              revoked: () => {
+                access.current = "viewer";
+                setRole("viewer");
+                setDoc(null);
+                setError(
+                  "This shared session ended because access changed or an update was rejected. Reopen the project after checking your access.",
+                );
+              },
+            },
+          );
+        } else if (id) {
           const stored = await loadProject(id);
+          if (disposed) return;
           if (!stored)
             throw new Error(
               "This project is not in this browser. Open Projects or import a backup.",
@@ -97,7 +173,7 @@ export default function Editor() {
           setVersions(stored.versions);
           currentVersions.current = stored.versions;
         } else {
-          initial = createDocument(query.get("new") ?? "blank");
+          initial = createDocument(opening.template ?? "blank");
           window.history.replaceState(null, "", `/editor?id=${initial.id}`);
         }
         if (window.innerWidth <= 1050) setLeftOpen(false);
@@ -107,7 +183,8 @@ export default function Editor() {
         current.current = initial;
         history.current = new History(structuredClone(initial));
         setDoc(initial);
-        setBrand(await loadBrand());
+        const kit = await loadBrand();
+        if (!disposed) setBrand(kit);
       } catch (e) {
         setError(
           e instanceof Error ? e.message : "Could not open this project.",
@@ -115,13 +192,36 @@ export default function Editor() {
       }
     }
     void open();
-  }, [query]);
+    return () => {
+      disposed = true;
+      collaboration.current?.destroy();
+      collaboration.current = null;
+    };
+  }, [opening]);
+  useEffect(() => {
+    if (!sharedId || !editable || !doc || status !== "Saved to local server")
+      return;
+    const timer = setTimeout(() => {
+      const src = canvas.current?.thumbnail();
+      if (src)
+        void api(`/api/projects/${sharedId}/thumbnail`, {
+          method: "PUT",
+          body: JSON.stringify({ src, revision: doc.updatedAt }),
+        }).catch(() => {});
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [doc, editable, sharedId, status]);
   const commit = useCallback((next: DesignDocument) => {
+    if (!canEdit(access.current)) return;
     try {
       const valid = documentSchema.parse({
         ...next,
         updatedAt: new Date().toISOString(),
       });
+      if (collaboration.current) {
+        collaboration.current.change(valid, current.current!);
+        return;
+      }
       history.current?.push(valid);
       setHistoryState({
         canUndo: history.current?.canUndo ?? false,
@@ -137,6 +237,13 @@ export default function Editor() {
   const save = useCallback(async () => {
     const latest = current.current;
     if (!latest) return false;
+    if (collaboration.current) {
+      if (collaboration.current.synced) return true;
+      setError(
+        "Shared changes are still syncing. Wait for the connection before leaving.",
+      );
+      return false;
+    }
     setStatus("Saving…");
     const payload: SavedProject = {
       document: structuredClone(latest),
@@ -160,13 +267,16 @@ export default function Editor() {
     }
   }, []);
   useEffect(() => {
-    if (!doc) return;
+    if (!doc || sharedId) return;
     const timer = setTimeout(() => void save(), 500);
     return () => clearTimeout(timer);
-  }, [doc, versions, save]);
+  }, [doc, versions, save, sharedId]);
   useEffect(() => {
     function warn(e: BeforeUnloadEvent) {
-      if (status !== "Saved on this device") {
+      if (
+        status !== "Saved on this device" &&
+        status !== "Saved to local server"
+      ) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -217,6 +327,10 @@ export default function Editor() {
     setSelected(copy.id);
   }
   function undo() {
+    if (collaboration.current) {
+      collaboration.current.undo();
+      return;
+    }
     const prev = history.current?.undo();
     if (prev) {
       current.current = prev;
@@ -229,6 +343,10 @@ export default function Editor() {
     }
   }
   function redo() {
+    if (collaboration.current) {
+      collaboration.current.redo();
+      return;
+    }
     const next = history.current?.redo();
     if (next) {
       current.current = next;
@@ -279,6 +397,12 @@ export default function Editor() {
     try {
       setError("");
       const image = await readImage(file);
+      if (sharedId)
+        image.src = (
+          await post<{ src: string }>(`/api/projects/${sharedId}/assets`, {
+            src: image.src,
+          })
+        ).src;
       if (!current.current) return;
       const ratio = Math.min(
         1,
@@ -313,11 +437,12 @@ export default function Editor() {
       replacing.current = null;
     }
   }
-  function exportFile(kind: "png" | "svg" | "json") {
+  async function exportFile(kind: "png" | "jpeg" | "svg" | "json") {
     if (!doc) return;
     try {
       const name = safeFilename(doc.title);
       if (kind === "png") download(canvas.current!.png(), `${name}.png`);
+      if (kind === "jpeg") download(canvas.current!.jpeg(), `${name}.jpg`);
       if (kind === "svg")
         download(
           new Blob([canvas.current!.svg()], { type: "image/svg+xml" }),
@@ -325,7 +450,7 @@ export default function Editor() {
         );
       if (kind === "json")
         download(
-          new Blob([JSON.stringify(doc, null, 2)], {
+          new Blob([JSON.stringify(await portableDocument(doc), null, 2)], {
             type: "application/json",
           }),
           `${name}.ranga.json`,
@@ -336,7 +461,23 @@ export default function Editor() {
       setError(e instanceof Error ? e.message : "Export failed.");
     }
   }
-  function checkpoint() {
+  async function portableDocument(value: DesignDocument) {
+    const copy = structuredClone(value);
+    for (const item of [...copy.layers, ...copy.references])
+      if (item.src?.startsWith("/api/assets/"))
+        item.src = await imageData(item.src);
+    return copy;
+  }
+  async function checkpoint() {
+    if (sharedId) {
+      if (!collaboration.current?.synced)
+        throw new Error(
+          "Wait for shared changes to finish syncing before saving a version.",
+        );
+      await post(`/api/projects/${sharedId}/versions`);
+      setNotice("Shared version saved.");
+      return;
+    }
     if (!doc) return;
     const snapshot = {
       id: crypto.randomUUID(),
@@ -350,27 +491,27 @@ export default function Editor() {
     setStatus("Unsaved changes");
     setNotice("Version saved. You can restore it from History.");
   }
-  async function reference(file: File) {
+  useEffect(() => {
+    collaboration.current?.awareness(selected);
+  }, [selected]);
+  async function publishShared() {
     try {
-      const image = await readImage(file);
-      const activeDocument = current.current;
-      if (!activeDocument) return;
-      if (activeDocument.references.length >= 12)
-        throw new Error("Keep up to 12 references per project.");
-      commit({
-        ...activeDocument,
-        references: [
-          ...activeDocument.references,
-          {
-            id: crypto.randomUUID(),
-            name: file.name.slice(0, 120),
-            src: image.src,
-            selected: false,
-          },
-        ],
+      const session = await api<Session>("/api/auth/get-session");
+      if (!session) {
+        setError(
+          "Sign in to Ranga before sharing. Your local project stays on this device.",
+        );
+        return;
+      }
+      await save();
+      const { id } = await post<{ id: string }>("/api/projects", {
+        document: current.current,
       });
+      router.push(`/editor?shared=${id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not add reference.");
+      setError(
+        e instanceof Error ? e.message : "Could not create shared project.",
+      );
     }
   }
   if (!doc)
@@ -391,7 +532,7 @@ export default function Editor() {
     );
   return (
     <div
-      className={`editor ${leftOpen ? "" : "left-closed"} ${rightOpen ? "" : "right-closed"}`}
+      className={`editor ${leftOpen && !previewMode ? "" : "left-closed"} ${rightOpen && !previewMode ? "" : "right-closed"} ${editable ? "" : "read-only"}`}
     >
       <header className="editor-top">
         <Link
@@ -417,6 +558,7 @@ export default function Editor() {
         </Link>
         <span className="toolbar-divider" />
         <input
+          disabled={!editable}
           className="project-name"
           aria-label="Project title"
           value={doc.title}
@@ -428,12 +570,13 @@ export default function Editor() {
         <span className="save-status" role="status">
           {status === "Saved on this device" && <Check size={13} />} {status}
         </span>
+        <ThemeToggle />
         <div className="history-actions">
           <button
             className="icon-button"
             aria-label="Undo"
             title="Undo (Ctrl+Z)"
-            disabled={!historyState.canUndo}
+            disabled={!editable || !historyState.canUndo}
             onClick={undo}
           >
             <Undo2 size={18} />
@@ -442,18 +585,68 @@ export default function Editor() {
             className="icon-button"
             aria-label="Redo"
             title="Redo (Ctrl+Shift+Z)"
-            disabled={!historyState.canRedo}
+            disabled={!editable || !historyState.canRedo}
             onClick={redo}
           >
             <Redo2 size={18} />
           </button>
         </div>
         <button
+          disabled={!editable}
           className="button button-outline save-version"
-          onClick={checkpoint}
+          onClick={() => void checkpoint().catch((e) => setError(e.message))}
         >
           <Bookmark size={14} /> Save version
         </button>
+        <div className="presence-avatars" aria-label="Active collaborators">
+          {people.map((p) => (
+            <span key={p.connectionId} title={`${p.name} (${p.role})`}>
+              {p.name.slice(0, 2).toUpperCase()}
+            </span>
+          ))}
+        </div>
+        <button
+          className="icon-button"
+          aria-label="Preview design"
+          aria-pressed={previewMode}
+          onClick={() => setPreviewMode(!previewMode)}
+        >
+          <ScanEye size={18} />
+        </button>
+        <button
+          className="button button-outline"
+          onClick={() => {
+            if (sharedId) {
+              setTeamSection("sharing");
+              setTab("team");
+              setLeftOpen(true);
+              setPreviewMode(false);
+            } else setShareOpen(!shareOpen);
+          }}
+        >
+          <Users size={15} /> Share
+        </button>
+        {shareOpen && !sharedId && (
+          <section className="share-popover">
+            <h3>Make space for your team.</h3>
+            <p>
+              Create a shared copy on this local server. Your original browser
+              project stays here.
+            </p>
+            <button
+              className="button button-accent full-width"
+              onClick={() => void publishShared()}
+            >
+              Create shared copy
+            </button>
+            <Link className="text-link" href="/login" target="_blank">
+              Sign in to Ranga
+            </Link>
+            <button className="text-link" onClick={() => setShareOpen(false)}>
+              Close
+            </button>
+          </section>
+        )}
         <div className="export-control">
           <button
             className="button button-accent"
@@ -466,6 +659,9 @@ export default function Editor() {
             <div className="export-menu">
               <button onClick={() => exportFile("png")}>
                 PNG image <span>Full resolution</span>
+              </button>
+              <button onClick={() => exportFile("jpeg")}>
+                JPEG image <span>Full resolution</span>
               </button>
               <button onClick={() => exportFile("svg")}>
                 SVG graphic <span>Text, shapes & images</span>
@@ -520,13 +716,19 @@ export default function Editor() {
               { id: "references", icon: ImagePlus, label: "References" },
               { id: "brand", icon: Palette, label: "Brand" },
               { id: "versions", icon: HistoryIcon, label: "History" },
-              { id: "assistant", icon: MessageSquare, label: "Assistant" },
+              { id: "assistant", icon: MessageSquare, label: "Creative tools" },
+              ...(sharedId
+                ? [{ id: "team" as const, icon: Users, label: "Team" }]
+                : []),
             ] as const
           ).map((t) => (
             <button
               key={t.id}
               className={tab === t.id ? "active" : ""}
-              onClick={() => setTab(t.id)}
+              onClick={() => {
+                if (t.id === "team") setTeamSection("comments");
+                setTab(t.id);
+              }}
               aria-label={t.label}
               title={t.label}
             >
@@ -538,44 +740,50 @@ export default function Editor() {
         <div className="left-panel-content">
           {tab === "elements" && (
             <>
-              <div className="panel-heading">
-                <h2>Make your mark</h2>
-              </div>
-              <p className="panel-description">
-                The building blocks of a good idea.
-              </p>
-              <div className="element-grid">
-                <button onClick={() => add("text")}>
-                  <Type size={23} />
-                  <span>Text</span>
-                </button>
-                <button
-                  onClick={() =>
-                    add("rect", { width: 220, height: 220, fill: "#bd442d" })
-                  }
-                >
-                  <Square size={21} />
-                  <span>Rectangle</span>
-                </button>
-                <button
-                  onClick={() =>
-                    add("ellipse", { width: 220, height: 220, fill: "#bd442d" })
-                  }
-                >
-                  <Circle size={21} />
-                  <span>Ellipse</span>
-                </button>
-                <button
-                  onClick={() => {
-                    replacing.current = null;
-                    fileInput.current?.click();
-                  }}
-                >
-                  <ImagePlus size={21} />
-                  <span>Image / logo</span>
-                </button>
-              </div>
-              <p className="quiet-note">PNG, JPG, WebP · Up to 5 MB</p>
+              <fieldset disabled={!editable}>
+                <div className="panel-heading">
+                  <h2>Make your mark</h2>
+                </div>
+                <p className="panel-description">
+                  The building blocks of a good idea.
+                </p>
+                <div className="element-grid">
+                  <button onClick={() => add("text")}>
+                    <Type size={23} />
+                    <span>Text</span>
+                  </button>
+                  <button
+                    onClick={() =>
+                      add("rect", { width: 220, height: 220, fill: "#bd442d" })
+                    }
+                  >
+                    <Square size={21} />
+                    <span>Rectangle</span>
+                  </button>
+                  <button
+                    onClick={() =>
+                      add("ellipse", {
+                        width: 220,
+                        height: 220,
+                        fill: "#bd442d",
+                      })
+                    }
+                  >
+                    <Circle size={21} />
+                    <span>Ellipse</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      replacing.current = null;
+                      fileInput.current?.click();
+                    }}
+                  >
+                    <ImagePlus size={21} />
+                    <span>Image / logo</span>
+                  </button>
+                </div>
+                <p className="quiet-note">PNG, JPG, WebP · Up to 5 MB</p>
+              </fieldset>
               <div className="panel-heading layer-heading">
                 <h2>
                   <Layers3 size={15} /> Layers
@@ -615,6 +823,7 @@ export default function Editor() {
                       </button>
                       <button
                         className="layer-action"
+                        disabled={!editable}
                         aria-label={`${l.visible ? "Hide" : "Show"} ${l.name}`}
                         onClick={() =>
                           patch({
@@ -630,6 +839,7 @@ export default function Editor() {
                       </button>
                       <button
                         className="layer-action"
+                        disabled={!editable}
                         aria-label={`${l.locked ? "Unlock" : "Lock"} ${l.name}`}
                         onClick={() =>
                           patch({
@@ -654,86 +864,39 @@ export default function Editor() {
             </>
           )}
           {tab === "references" && (
-            <>
-              <div className="panel-heading">
-                <h2>Your direction</h2>
-                <span>{doc.references.length}/12</span>
-              </div>
-              <p className="panel-description">
-                Keep inspiration close. Add images you own or have permission to
-                use, then select what speaks to you.
-              </p>
-              <button
-                className="button button-outline full-width"
-                onClick={() => refInput.current?.click()}
-              >
-                <Upload size={15} /> Add reference
-              </button>
-              <div className="reference-grid">
-                {doc.references.map((r) => (
-                  <div
-                    key={r.id}
-                    className={`reference-card ${r.selected ? "selected" : ""}`}
-                  >
-                    <button
-                      aria-label={`Select reference ${r.name}`}
-                      aria-pressed={r.selected}
-                      onClick={() =>
-                        patch({
-                          references: doc.references.map((item) =>
-                            item.id === r.id
-                              ? { ...item, selected: !item.selected }
-                              : item,
-                          ),
-                        })
-                      }
-                    >
-                      <Image
-                        src={r.src}
-                        alt={r.name}
-                        width={130}
-                        height={130}
-                        unoptimized
-                      />
-                      {r.selected && (
-                        <span className="reference-check">
-                          <Check size={13} />
-                        </span>
-                      )}
-                    </button>
-                    <div>
-                      <span>{r.name}</span>
-                      <button
-                        aria-label={`Remove reference ${r.name}`}
-                        onClick={() =>
-                          patch({
-                            references: doc.references.filter(
-                              (item) => item.id !== r.id,
-                            ),
-                          })
-                        }
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <label className="field">
-                <span>Creative direction</span>
-                <textarea
-                  rows={5}
-                  maxLength={5000}
-                  value={doc.direction}
-                  onChange={(e) => patch({ direction: e.target.value })}
-                  placeholder="What do you like? A color relationship, a type treatment, the space between things…"
-                />
-              </label>
-              <p className="quiet-note">
-                References stay separate from your exported design. Pinterest
-                connection is planned for a later milestone.
-              </p>
-            </>
+            <ReferenceBoard
+              document={doc}
+              readOnly={!editable}
+              onChange={(references) => patch({ references })}
+              onDirection={(direction) => patch({ direction })}
+              upload={
+                sharedId
+                  ? async (src) =>
+                      (
+                        await post<{ src: string }>(
+                          `/api/projects/${sharedId}/assets`,
+                          { src },
+                        )
+                      ).src
+                  : undefined
+              }
+            />
+          )}
+          {tab === "versions" && sharedId && (
+            <TeamPanel
+              initialSection="history"
+              key="history"
+              projectId={sharedId}
+              role={role}
+              selected={selected}
+              people={people}
+              eventVersion={eventVersion}
+              onLocate={(id, point) => {
+                setSelected(id);
+                setCommentPoint(point);
+                if (id) canvas.current?.select(id);
+              }}
+            />
           )}
           {tab === "brand" && (
             <>
@@ -754,6 +917,7 @@ export default function Editor() {
               </p>
               <button
                 className="button button-dark full-width"
+                disabled={!editable}
                 onClick={() => {
                   patch({
                     background: brand.secondary,
@@ -775,16 +939,33 @@ export default function Editor() {
               {brand.logo && (
                 <button
                   className="button button-outline full-width"
+                  disabled={!editable}
                   onClick={async () => {
-                    const image = new window.Image();
-                    image.onload = () =>
-                      add("image", {
-                        src: brand.logo,
-                        name: "Brand logo",
-                        width: 180,
-                        height: (180 * image.height) / image.width,
-                      });
-                    image.src = brand.logo!;
+                    try {
+                      const src = sharedId
+                        ? (
+                            await post<{ src: string }>(
+                              `/api/projects/${sharedId}/assets`,
+                              { src: brand.logo },
+                            )
+                          ).src
+                        : brand.logo!;
+                      const image = new window.Image();
+                      image.onload = () =>
+                        add("image", {
+                          src,
+                          name: "Brand logo",
+                          width: 180,
+                          height: (180 * image.height) / image.width,
+                        });
+                      image.src = await imageData(src);
+                    } catch (e) {
+                      setError(
+                        e instanceof Error
+                          ? e.message
+                          : "Could not add brand logo.",
+                      );
+                    }
                   }}
                 >
                   Add brand logo
@@ -802,7 +983,7 @@ export default function Editor() {
               </Link>
             </>
           )}
-          {tab === "versions" && (
+          {tab === "versions" && !sharedId && (
             <>
               <div className="panel-heading">
                 <h2>Room to explore</h2>
@@ -813,7 +994,9 @@ export default function Editor() {
               </p>
               <button
                 className="button button-outline full-width"
-                onClick={checkpoint}
+                onClick={() =>
+                  void checkpoint().catch((e) => setError(e.message))
+                }
               >
                 <Plus size={15} /> Save a version
               </button>
@@ -850,30 +1033,52 @@ export default function Editor() {
             </>
           )}
           {tab === "assistant" && (
-            <>
-              <div className="panel-heading">
-                <h2>Design assistant</h2>
-              </div>
-              <div className="unavailable-tag">NOT CONNECTED</div>
-              <h3 className="assistant-heading">
-                The tools are here.
-                <br />
-                The conversation comes next.
-              </h3>
-              <p className="panel-description">
-                AI editing will be connected in a later milestone. For now,
-                compose with real editable layers using Elements and Properties.
-              </p>
-              <button
-                className="button button-outline full-width"
-                onClick={() => setTab("elements")}
-              >
-                Explore the tools <ArrowUpRight size={14} />
-              </button>
-              <p className="quiet-note">
-                No prompts are sent to an AI service in this preview.
-              </p>
-            </>
+            <CreativeHandoff
+              document={doc}
+              readOnly={!editable}
+              onChange={commit}
+              onImport={async (next) => {
+                try {
+                  await checkpoint();
+                  commit({
+                    ...current.current!,
+                    title: next.title,
+                    width: next.width,
+                    height: next.height,
+                    background: next.background,
+                    layers: next.layers,
+                  });
+                  setNotice(
+                    "Validated design imported. A previous version was saved.",
+                  );
+                  return true;
+                } catch (e) {
+                  setError(
+                    e instanceof Error
+                      ? e.message
+                      : "Could not save a version before importing.",
+                  );
+                  return false;
+                }
+              }}
+              onImage={() => fileInput.current?.click()}
+            />
+          )}
+          {tab === "team" && sharedId && (
+            <TeamPanel
+              key={teamSection}
+              initialSection={teamSection}
+              projectId={sharedId}
+              role={role}
+              selected={selected}
+              people={people}
+              eventVersion={eventVersion}
+              onLocate={(id, point) => {
+                setSelected(id);
+                setCommentPoint(point);
+                if (id) canvas.current?.select(id);
+              }}
+            />
           )}
         </div>
         <div className="panel-foot">
@@ -901,8 +1106,14 @@ export default function Editor() {
           </div>
         )}
         <CanvasView
+          commentPoint={commentPoint}
           ref={canvas}
           document={doc}
+          editable={editable && !previewMode}
+          people={people.filter((p) => p.userId !== currentUserId)}
+          onCursor={(cursor) =>
+            collaboration.current?.awareness(selected, cursor)
+          }
           selected={selected}
           zoom={zoom}
           onScale={setScale}
@@ -936,30 +1147,32 @@ export default function Editor() {
         </div>
       </main>
       <aside className="editor-right">
-        <Properties
-          layer={layer}
-          document={doc}
-          onChange={updateLayer}
-          onDocument={patch}
-          onDuplicate={duplicate}
-          onDelete={remove}
-          onReplace={() => {
-            replacing.current = selected;
-            fileInput.current?.click();
-          }}
-          onReorder={(direction) => {
-            if (!selected) return;
-            const layers = [...doc.layers];
-            const index = layers.findIndex((l) => l.id === selected);
-            const to = Math.max(
-              0,
-              Math.min(layers.length - 1, index + direction),
-            );
-            const [moved] = layers.splice(index, 1);
-            layers.splice(to, 0, moved);
-            patch({ layers });
-          }}
-        />
+        <fieldset disabled={!editable}>
+          <Properties
+            layer={layer}
+            document={doc}
+            onChange={updateLayer}
+            onDocument={patch}
+            onDuplicate={duplicate}
+            onDelete={remove}
+            onReplace={() => {
+              replacing.current = selected;
+              fileInput.current?.click();
+            }}
+            onReorder={(direction) => {
+              if (!selected) return;
+              const layers = [...doc.layers];
+              const index = layers.findIndex((l) => l.id === selected);
+              const to = Math.max(
+                0,
+                Math.min(layers.length - 1, index + direction),
+              );
+              const [moved] = layers.splice(index, 1);
+              layers.splice(to, 0, moved);
+              patch({ layers });
+            }}
+          />
+        </fieldset>
         <button
           className="canvas-properties-button"
           onClick={() => setSelected(null)}
@@ -976,17 +1189,6 @@ export default function Editor() {
           const file = e.target.files?.[0];
           e.target.value = "";
           if (file) void upload(file);
-        }}
-      />
-      <input
-        hidden
-        ref={refInput}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) void reference(file);
         }}
       />
     </div>

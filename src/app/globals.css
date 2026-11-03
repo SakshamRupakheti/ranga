@@ -1776,6 +1776,541 @@ kbd {
     font-size: 7px;
   }
 }
+
+/* Collaborative and manual creative workflows */
+.account-page {
+  min-height: 100vh;
+  max-width: 530px;
+  margin: auto;
+  padding: 45px 28px;
+}
+.account-card {
+  margin-top: 45px;
+  padding: 30px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 5px;
+}
+.account-card h1 {
+  font-family: var(--serif);
+  font-size: 34px;
+  line-height: 1.15;
+  margin: 20px 0;
+}
+.account-card > p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 25px;
+}
+.account-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 12px;
+  margin: 20px 0;
+}
+.account-links a:hover {
+  color: var(--accent);
+}
+.account-inline {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  max-width: 420px;
+  margin: 20px 0;
+}
+.account-inline .field {
+  margin: 0;
+  flex: 1;
+}
+.delete-account-form {
+  margin: 25px 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  max-width: 430px;
+}
+.shared-project-section {
+  margin-top: 38px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+}
+.shared-project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 15px;
+}
+.shared-project-card {
+  border: 1px solid var(--line);
+  padding: 16px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.shared-project-card h3 {
+  font-size: 13px;
+}
+.shared-project-card p,
+.shared-project-card > button {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.project-search {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  margin: 14px 0;
+  font-size: 12px;
+}
+.project-filters {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.project-filters > select,
+.reference-filters select {
+  border: 1px solid var(--line);
+  padding: 9px;
+  background: var(--surface);
+  font-size: 11px;
+  border-radius: 3px;
+}
+.presence-avatars {
+  display: flex;
+  gap: 3px;
+}
+.presence-avatars > span {
+  background: #dce7d0;
+  color: #3c4c30;
+  border: 1px solid #bbc9ac;
+  border-radius: 50%;
+  font-size: 9px;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+}
+.share-popover {
+  position: absolute;
+  right: 25px;
+  top: 62px;
+  z-index: 60;
+  width: 290px;
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 30px #0002;
+}
+.share-popover h3 {
+  font-family: var(--serif);
+  font-size: 24px;
+}
+.share-popover p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.share-popover .text-link {
+  margin: 8px;
+}
+.team-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 15px 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+.team-tabs button {
+  font-size: 10px;
+  padding: 10px 5px;
+  flex: 1;
+  text-transform: capitalize;
+  border-bottom: 2px solid transparent;
+}
+.team-tabs button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  font-size: 10px;
+  margin-bottom: 12px;
+}
+.member-row strong {
+  font-weight: 500;
+}
+.member-row small,
+.activity-row small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 5px;
+}
+.member-row button {
+  font-size: 9px;
+  color: var(--accent);
+}
+.comment-thread {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 12px;
+  margin: 14px 0;
+}
+.comment-thread > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.comment-thread strong {
+  font-size: 10px;
+  font-weight: 600;
+}
+.comment-thread time,
+.comment-thread small {
+  font-size: 8px;
+  color: var(--muted);
+}
+.comment-thread p {
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 9px 0;
+}
+.comment-thread.resolved {
+  background: var(--soft);
+}
+.comment-reply {
+  border-left: 2px solid var(--line);
+  padding-left: 10px;
+  margin-top: 12px;
+}
+.comment-actions {
+  display: flex;
+  gap: 15px;
+  font-size: 9px;
+  color: var(--muted);
+}
+.comment-actions button {
+  color: var(--accent);
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+}
+.activity-row {
+  font-size: 10px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  line-height: 1.5;
+}
+.small-heading {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 25px 0 8px;
+}
+.recipe-preview {
+  border: 1px solid #b3c2a4;
+  background: var(--soft);
+  padding: 12px;
+  font-size: 12px;
+}
+.recipe-preview p {
+  font-size: 10px;
+  color: var(--muted);
+}
+.paste-zone {
+  padding: 12px 5px;
+  border: 1px dashed var(--line);
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.reference-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+.reference-filters select {
+  width: 100%;
+}
+.reference-filters button {
+  font-size: 10px;
+  color: var(--accent);
+}
+.moodboard {
+  display: grid;
+  gap: 14px;
+}
+.moodboard-card {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.moodboard-card.selected {
+  border-color: var(--accent);
+}
+.reference-visual {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+}
+.reference-visual img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  display: block;
+}
+.link-reference {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  padding: 15px;
+  background: var(--soft);
+  font-family: var(--serif);
+  font-size: 21px;
+  overflow-wrap: anywhere;
+}
+.moodboard-details {
+  padding: 12px;
+}
+.moodboard-details > strong {
+  font-size: 11px;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.source-attribution {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  color: var(--muted);
+  margin: 8px 0 14px;
+}
+.moodboard-details .field {
+  margin-top: 10px;
+}
+.reference-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  padding-top: 5px;
+}
+.moodboard.comparing .moodboard-details .field {
+  display: none;
+}
+.collaborative-overlays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.remote-selection {
+  position: absolute;
+  border: 1.5px solid;
+  transform-origin: top left;
+}
+.remote-selection > span {
+  position: absolute;
+  top: -17px;
+  left: -1px;
+  font-size: 8px;
+  color: #fff;
+  padding: 2px 5px;
+  white-space: nowrap;
+}
+.remote-cursor {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  white-space: nowrap;
+  background: var(--surface);
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+.shared-project-thumbnail {
+  height: 180px;
+  display: grid;
+  place-items: center;
+  background: var(--soft);
+  margin: -16px -16px 16px;
+  overflow: hidden;
+  padding: 12px;
+}
+.shared-project-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.shared-project-thumbnail span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.shared-project-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.shared-project-actions button {
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.comment-marker {
+  position: absolute;
+  padding: 5px 8px;
+  background: var(--accent);
+  color: var(--surface);
+  border-radius: 3px;
+  font-size: 10px;
+  box-shadow: 0 0 0 3px var(--surface);
+}
+:root[data-theme="dark"] {
+  --paper: #20251f;
+  --surface: #282e27;
+  --ink: #e5e8df;
+  --muted: #aab3a1;
+  --line: #444e3e;
+  --accent: #ef8c70;
+  --soft: #343d2e;
+  color-scheme: dark;
+}
+:root[data-theme="dark"] .button-accent {
+  background: #be5239;
+  color: #fff;
+}
+:root[data-theme="dark"] .button-dark {
+  background: #dce5d3;
+  color: #242c20;
+}
+:root[data-theme="dark"] .editor-center,
+:root[data-theme="dark"] .canvas-controls {
+  background: #151a14;
+}
+:root[data-theme="dark"] .canvas-stage {
+  background-image: radial-gradient(#384330 0.65px, transparent 0.65px);
+}
+:root[data-theme="dark"] .app-sidebar nav a.active,
+:root[data-theme="dark"] .layer-row.selected,
+:root[data-theme="dark"] .segmented button.active {
+  background: #394631;
+  color: #e8efdf;
+}
+:root[data-theme="dark"] .project-thumbnail {
+  background: #353f2e;
+}
+:root[data-theme="dark"] .poster-preview,
+:root[data-theme="dark"] .starter > div:first-child {
+  color: #252922;
+}
+:root[data-theme="dark"] .color-field > span {
+  color: var(--muted);
+}
+:root[data-theme="dark"] .unavailable-tag {
+  background: #394330;
+  color: #c1c9b7;
+}
+:root[data-theme="dark"] .editor-alert {
+  color: var(--ink);
+}
+:root[data-theme="dark"] .hero-description {
+  color: var(--muted);
+}
+:root[data-theme="dark"] .blank-art {
+  background: #697a5c;
+}
+@media (max-width: 1100px) {
+  .editor-top .save-version {
+    display: none;
+  }
+  .editor-top .project-name {
+    width: 125px;
+  }
+  .presence-avatars > span {
+    width: 20px;
+    height: 20px;
+    font-size: 8px;
+  }
+  .save-status {
+    font-size: 8px;
+  }
+  .editor-top .button {
+    padding: 8px 10px;
+  }
+  .editor-top .toolbar-divider {
+    margin: 0 3px;
+  }
+  .editor-top {
+    gap: 4px;
+  }
+}
+@media (max-width: 720px) {
+  .editor-top .wordmark {
+    display: none;
+  }
+  .editor-top > .toolbar-divider {
+    display: none;
+  }
+  .editor-top .project-name {
+    width: 92px;
+  }
+  .editor-top .history-actions {
+    margin-left: auto;
+  }
+  .editor-top .presence-avatars {
+    display: none;
+  }
+  .editor-top .icon-button {
+    width: 26px;
+  }
+  .editor-top .button {
+    font-size: 9px;
+    padding: 7px;
+    gap: 4px;
+  }
+  .account-card {
+    padding: 24px;
+  }
+  .shared-project-section {
+    padding: 16px;
+  }
+  .project-filters {
+    gap: 8px;
+  }
+  .project-filters > select {
+    max-width: 130px;
+  }
+  .account-inline {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .tool-tabs button {
+    font-size: 7px;
+  }
+  .tool-tabs {
+    gap: 0;
+  }
+}
 @media (max-width: 720px) {
   .site-nav {
     height: 80px;

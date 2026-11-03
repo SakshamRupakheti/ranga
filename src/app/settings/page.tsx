@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { AccountSettings } from "@/components/account-settings";
 import { Shell } from "@/components/shell";
 import { clearLocalData } from "@/lib/storage";
 import { HardDrive, Unplug, Trash2 } from "lucide-react";
@@ -17,15 +18,17 @@ export default function Settings() {
         </div>
       </section>
       <div className="settings-stack">
+        <AccountSettings />
         <section className="settings-card">
           <HardDrive size={22} />
           <div>
-            <h2>Local by design, for now.</h2>
+            <h2>Your device and your shared workspace.</h2>
             <p>
-              Projects, uploaded images, reference images, versions, and your
-              brand kit are stored in this browser using IndexedDB. This preview
-              has no account system or cloud sync. Anyone using this browser
-              profile can access these projects.
+              Device projects and your brand kit are stored in this browser.
+              Anyone using this browser profile can access them. Shared
+              projects, uploads, accounts, comments, and versions are stored by
+              the local Ranga service, with access controlled by project roles.
+              Shared editing also keeps a browser cache for reconnecting.
             </p>
             <p>
               Clearing browser data removes your work. Export Ranga project
@@ -42,20 +45,19 @@ export default function Settings() {
         <section className="settings-card">
           <Unplug size={22} />
           <div>
-            <h2>External connections</h2>
+            <h2>Creative tools</h2>
             <p>
-              As requested, service setup is deferred until the core editor is
-              ready.
+              ChatGPT and Pinterest are used in your own browser sessions. Ranga
+              never accesses their passwords, cookies, or extensions.
             </p>
             {[
-              "AI assistant and image generation",
-              "Pinterest reference discovery",
-              "Canva interoperability",
-              "Cloud accounts and project sync",
+              "ChatGPT: separate-tab shortcut and manual prompt handoff",
+              "Pinterest: separate-tab shortcut and attributed references",
+              "Editable JSON recipe import with validation",
             ].map((name) => (
               <div className="connection-row" key={name}>
                 <span>{name}</span>
-                <span className="unavailable-tag">NOT CONFIGURED</span>
+                <span className="unavailable-tag">NO EXTERNAL API</span>
               </div>
             ))}
           </div>
@@ -79,7 +81,7 @@ export default function Settings() {
                   try {
                     await clearLocalData();
                     setMessage(
-                      "All Ranga workspace data in this browser has been deleted.",
+                      "Device projects, versions, and brand settings have been deleted. Shared projects remain in your account.",
                     );
                   } catch {
                     setMessage(

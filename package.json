@@ -10,23 +10,32 @@
     "lint": "eslint .",
     "test": "tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
-    "format": "prettier --write src tests docs *.ts *.mjs *.json README.md TASKS.md"
+    "format": "prettier --write src tests docs *.ts *.mjs *.json README.md TASKS.md",
+    "service": "tsx src/server/service.ts"
   },
   "dependencies": {
+    "better-auth": "1.7.15",
+    "better-sqlite3": "13.0.3",
     "fabric": "7.4.0",
     "idb-keyval": "6.3.0",
     "lucide-react": "1.66.0",
     "next": "16.4.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "sharp": "0.35.5",
+    "ws": "8.22.1",
+    "y-indexeddb": "9.0.12",
+    "yjs": "13.6.33",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "4.3.3",
+    "@types/better-sqlite3": "9.6.0",
     "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@types/ws": "8.18.2",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.4",
     "prettier": "3.9.10",
