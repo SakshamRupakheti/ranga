@@ -40,6 +40,8 @@ The prompt builder deterministically serializes a design brief, selected referen
 
 ## Official implementation references
 
+The optional `desktop/` package composes separate sandboxed Electron `WebContentsView` panes for Ranga, ChatGPT, and Pinterest. Its local toolbar exposes only validated navigation/layout commands; website panes have no Node integration or preload bridge. Each site has its own persistent session. The existing loopback web app and collaboration service run as separate processes, so the desktop does not change the editor or database architecture. Website pages and login providers may still require the regular browser fallback. See [desktop guide](../desktop/README.md).
+
 - Next.js version-matched guides in `node_modules/next/dist/docs/`, and [route handlers](https://nextjs.org/docs/app/getting-started/route-handlers).
 - [Fabric documentation](https://www.fabricjs.com/docs/) and installed Fabric 7 type declarations.
 - [Better Auth installation](https://www.better-auth.com/docs/installation), [SQLite adapter](https://www.better-auth.com/docs/adapters/sqlite), and installed package exports/type declarations.

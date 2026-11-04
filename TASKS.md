@@ -27,10 +27,14 @@ Updated 2026-11-03. Preserve the existing Ranga editor. Revised direction: nativ
 
 ## Partially complete or environment-dependent
 
+- [x] Publish source and full commit history at SakshamRupakheti/ranga under the user-selected MIT license.
+- [x] Optional API-free desktop workspace with separate Ranga/ChatGPT/Pinterest sessions, split view, manual handoff, and system-browser fallback.
+- [ ] Signed desktop installers, bundled local server, update delivery, authenticated third-party compatibility, macOS/Linux verification, and desktop security review.
+
 - [ ] Hosted collaboration usable by people on different computers. Current links and service are loopback-only.
 - [ ] Replace development SQLite binary tables with managed PostgreSQL and private object storage; rehearse migration.
 - [ ] Verified email ownership and actual password-reset email delivery. Local reset outbox works; email-restricted invitations do not prove mailbox ownership.
-- [ ] Create/connect authorized private GitHub repository, push branches, run hosted CI, enable branch protection and issues. Local branches and workflow files exist.
+- [ ] Verify a successful hosted CI run and enable branch protection. Public repository and main/develop/feature branches are pushed; workflow configuration alone does not prove a hosted pass.
 - [ ] Private preview deployment with persistent WebSocket hosting.
 - [ ] Scheduled backups, restore drill from a backup file, quotas, retention, garbage collection, monitoring, multi-instance coordination.
 

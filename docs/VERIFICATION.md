@@ -58,3 +58,13 @@ The service is single-process and loopback-only. Remote/public hosting, PostgreS
 Recovery uses a private development outbox, not email. Email-restricted invitations match account email without proving mailbox ownership. Non-loopback service origins are rejected. No OpenAI, Pinterest or Canva APIs were called.
 
 The original editor baseline and build notes are retained in [VERIFICATION_LOCAL_EDITOR.md](VERIFICATION_LOCAL_EDITOR.md). Webpack remains the production build mode after the original Windows Turbopack CSS-worker failure. ESLint 9.39.5 is pinned for Next plugin compatibility; development-only advisories remain tracked.
+
+## Desktop workspace and open-source milestone — 2026-11-03
+
+The public repository is [SakshamRupakheti/ranga](https://github.com/SakshamRupakheti/ranga), licensed under MIT as selected by the user. The existing source history and main/develop/feature branches were pushed. No private application data or browser profiles are included. Hosted CI and branch protection remain separately tracked; a local pass is not a hosted CI result.
+
+The optional Electron package compiles independently of the Next.js app. Five policy tests pass, covering local-origin restrictions, official-site/auth navigation, executable URL and credential rejection, fixed IPC commands, and pane geometry. A Windows Electron smoke test passes with an isolated temporary profile and explicit third-party fixtures. It exercises actual site switching and split layout, sandbox/context isolation, absence of Node/preload privileges in website panes, separate cookies for the same authentication host, real pointer-driven history, confirmation before external links, home-page-only browser fallback, native resize behavior, and an offline-local-server recovery message. The test does not log into or automate live third-party accounts.
+
+The existing 10 unit/service tests and production Webpack build pass after adding the optional package; root lint and TypeScript checks pass. Local sandbox restrictions initially prevented loopback requests and Electron startup, so runtime verification was rerun with process/network permission. Native Windows pixel rounding is handled by checking pane bounds against the actual content size rather than the requested window size.
+
+A separate visual profile loaded the real Ranga editor with no reported renderer errors. Native window inspection confirmed the Ranga dashboard/editor and the unauthenticated ChatGPT and Pinterest pages loaded. Authenticated third-party login, voice, uploads to those sites, provider challenges, installer delivery, and macOS/Linux operation are not verified. The desktop remains an experimental source-run preview with an external-browser fallback.

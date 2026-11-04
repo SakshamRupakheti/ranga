@@ -1,0 +1,19 @@
+{
+  "name": "ranga-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Experimental desktop workspace for Ranga, ChatGPT and Pinterest",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && electron .",
+    "test": "npm run build && node --test tests/policy.test.cjs",
+    "test:smoke": "npm run build && node --test tests/workspace.test.cjs"
+  },
+  "devDependencies": {
+    "electron": "45.2.1",
+    "typescript": "6.0.3",
+    "@types/node": "26.6.6"
+  }
+}

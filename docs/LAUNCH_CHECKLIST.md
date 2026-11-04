@@ -13,7 +13,8 @@
 
 ## Required before public exposure
 
-- [ ] Private GitHub repository connected; branches pushed; hosted CI passed; branch protection enabled.
+- [x] Public MIT-licensed GitHub source repository connected, with commit history and main/develop/feature branches pushed (replaces the original private-repository preference).
+- [ ] Hosted CI passed; branch protection enabled.
 - [ ] Private hosted preview verified with persistent WebSocket infrastructure and authenticated proxy routing.
 - [ ] Managed PostgreSQL/object storage migrated and isolated with least-privilege access.
 - [ ] HTTPS/WSS and secure production cookie/session settings reviewed; session-secret management and rotation established.
@@ -30,4 +31,4 @@
 - [ ] No unfinished feature represented as production-ready; all current critical checks pass.
 - [ ] Development dependency advisories reviewed and accepted or resolved compatibly.
 
-No AI/social-platform OAuth integration is a launch requirement for this MVP. Pinterest and ChatGPT remain separate-tab manual tools. API integration would be a separate explicitly approved phase.
+No AI/social-platform OAuth integration is a launch requirement for this MVP. Pinterest and ChatGPT remain manual tools, in separate browser tabs or the optional desktop panes. API integration would be a separate explicitly approved phase. The desktop preview has a separate release path: signed installers, bundled server, update delivery, platform coverage, and security review.

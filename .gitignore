@@ -11,3 +11,5 @@ test-results/
 .vercel/
 .ranga-data/
 .ranga-test-data/
+desktop/dist/
+desktop/.profiles/

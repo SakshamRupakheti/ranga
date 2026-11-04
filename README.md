@@ -21,6 +21,17 @@ Open <http://127.0.0.1:3001/projects>. Browser projects work without an account.
 
 No OpenAI, Pinterest, Canva, or paid-service credentials are required. Internal application HTTP endpoints and WebSockets power actual accounts and collaboration.
 
+## Optional desktop workspace
+
+Keep Ranga, ChatGPT, and Pinterest in one desktop window, with separate sessions, navigation controls, and a split view. Start the local web app above, then run:
+
+```sh
+npm ci --prefix desktop
+npm start --prefix desktop
+```
+
+The desktop preview uses Electron and needs no third-party API keys. Sign in and copy/import content manually. Browser-only projects stay in their original browser profile; move them with JSON backups or sign into Ranga for shared projects. Some website sign-ins may require the **Open in browser** fallback. See the [desktop guide](desktop/README.md) for setup, privacy, controls, tests, and current limits. This is a source-run preview; signed installers are not available yet.
+
 ## Working features
 
 - Native text, rectangles, ellipses, raster uploads, logos, direct text editing, drag/resize/rotate, precise properties, line height, stacking, locking, visibility, duplication, multi-selection, undo/redo, zoom and preview.
@@ -66,6 +77,7 @@ src/lib/storage.ts         Browser project persistence
 src/server/                Authenticated local HTTP/WebSocket service
 migrations/                Tracked database changes
 public/                    Published recipe schema
+desktop/                   Optional isolated Electron workspace
 ```
 
 See [architecture](docs/ARCHITECTURE.md), [decisions](docs/DECISIONS.md), [recipe format](docs/DESIGN_RECIPE.md), [contributing](CONTRIBUTING.md), [task list](TASKS.md), and [launch checklist](docs/LAUNCH_CHECKLIST.md).

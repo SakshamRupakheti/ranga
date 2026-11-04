@@ -1,7 +1,7 @@
 name: Quality
 on:
   push:
-    branches: [main, develop, 'feature/**']
+    branches: [main, develop, "feature/**"]
   pull_request:
 permissions:
   contents: read
@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npx next typegen
@@ -24,4 +24,20 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
         env:
-          CI: 'true'
+          CI: "true"
+  desktop:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm ci --prefix desktop
+      - run: npm test --prefix desktop
+      - run: npm run test:smoke --prefix desktop

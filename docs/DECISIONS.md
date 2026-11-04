@@ -27,3 +27,11 @@ Password recovery writes to an ignored private development outbox. No email is s
 ## 006: Preserve local work and portable exports
 
 Accepted 2026-11-03. Browser projects remain separate and available without an account. Sharing creates an explicit server copy. Exported JSON/SVG resolve authorized shared assets into portable embedded data. Duplicating a shared project creates a separately owned copy with no inherited collaborators. Previous local work is never uploaded automatically.
+
+## 007: Public source under MIT
+
+Accepted 2026-11-03. The user's explicit open-source request replaces the earlier private-repository requirement. The user selected MIT. Publish original source and commit history at https://github.com/SakshamRupakheti/ranga; keep local databases, browser sessions, secrets, uploaded artwork, and build outputs ignored. Public source does not imply a hosted application or a verified GitHub Actions run.
+
+## 008: Optional desktop composition without APIs
+
+Accepted 2026-11-03 following the user's request for a browser containing Ranga, ChatGPT, and Pinterest. Use maintained Electron/Chromium `WebContentsView` composition with separate persistent sessions. Keep the web app and service independent, with no Electron dependency for web-only contributors. Do not iframe third-party sites, strip website security headers, import browser cookies, inject automation, or use API keys. Users sign in and transfer content manually. Website/login-provider compatibility remains conditional, with an explicit system-browser fallback. Desktop source is an experimental preview; installers, update delivery, and platform/security release checks remain open.

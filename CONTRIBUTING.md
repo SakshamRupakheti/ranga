@@ -24,6 +24,8 @@ npm run test:e2e
 
 Check light/dark themes, phone layouts, direct canvas transforms, exports, and role restrictions when changing the editor. Add meaningful behavior tests for changes to persistence, collaboration, authentication, or untrusted input. Avoid tests that only mirror implementation details.
 
+The optional desktop package has its own TypeScript configuration and lockfile. Run `npm ci --prefix desktop`, `npm test --prefix desktop`, and `npm run test:smoke --prefix desktop` when changing it. Its smoke test uses an isolated profile and explicit website fixtures; live sign-in compatibility requires separate manual verification. See [desktop/README.md](desktop/README.md). Do not add privileged renderer bridges or read existing browser cookies to connect services.
+
 ## Review and release
 
-Describe the concrete behavior, validation, and remaining limitations. Update TASKS.md, architecture decisions, and verification evidence. External APIs, paid services, public deployment, and third-party account integrations are outside the current milestone. The launch checklist must be completed before public release. The public repository is https://github.com/SakshamRupakheti/ranga. Contributions are provided under the MIT license. Check the Actions tab for actual hosted check results.
+Describe the concrete behavior, validation, and remaining limitations. Update TASKS.md, architecture decisions, and verification evidence. External APIs, paid services, public hosting, and automated third-party account integrations are outside the current milestone. The launch checklist must be completed before a hosted release. The public source repository is https://github.com/SakshamRupakheti/ranga. Contributions are provided under the MIT license. Check the Actions tab for actual hosted check results.

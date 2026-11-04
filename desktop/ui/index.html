@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-src 'none'"
+    />
+    <title>Ranga Workspace</title>
+    <link rel="stylesheet" href="workspace.css" />
+    <script src="workspace.js" defer></script>
+  </head>
+  <body>
+    <header class="workspace">
+      <div class="topline">
+        <div class="brand">Ranga<span>WORKSPACE</span></div>
+        <nav class="sites" aria-label="Creative tools">
+          <button data-site="ranga" aria-pressed="true">
+            <span class="site-dot ranga"></span>Ranga
+          </button>
+          <button data-site="chatgpt" aria-pressed="false">
+            <span class="site-dot chatgpt"></span>ChatGPT
+          </button>
+          <button data-site="pinterest" aria-pressed="false">
+            <span class="site-dot pinterest"></span>Pinterest
+          </button>
+        </nav>
+        <div class="actions">
+          <button data-command="split" id="split" aria-pressed="false">
+            <span aria-hidden="true">◫</span> Split workspace
+          </button>
+          <button data-command="help" class="quiet">Help</button>
+        </div>
+      </div>
+      <div class="navigation">
+        <div class="history" aria-label="Page navigation">
+          <button
+            data-command="back"
+            id="back"
+            aria-label="Back"
+            title="Back"
+            disabled
+          >
+            ←
+          </button>
+          <button
+            data-command="forward"
+            id="forward"
+            aria-label="Forward"
+            title="Forward"
+            disabled
+          >
+            →
+          </button>
+          <button data-command="reload" aria-label="Reload" title="Reload">
+            ↻
+          </button>
+          <button data-command="home" aria-label="Site home" title="Site home">
+            ⌂
+          </button>
+        </div>
+        <div class="address">
+          <span id="activity" class="activity"></span
+          ><span id="origin">127.0.0.1:3001</span><span id="pane">Ranga</span>
+        </div>
+        <button data-command="external" class="external">
+          Open in browser <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+      <div class="status" role="status" aria-live="polite">
+        <span id="message">Loading your workspace…</span>
+        <button data-command="open-link" id="open-link" hidden>
+          Open link ↗
+        </button>
+        <button
+          data-command="dismiss"
+          id="dismiss"
+          aria-label="Dismiss message"
+          hidden
+        >
+          ×
+        </button>
+        <span class="local-note" id="note">YOUR TOOLS. YOUR PROCESS.</span>
+      </div>
+    </header>
+    <main aria-label="Website panes"></main>
+  </body>
+</html>
