@@ -1,6 +1,6 @@
 # Ranga architecture
 
-Current scope: local native editor, collaborative workflow, and manual creative handoff. Updated 2026-11-03.
+Current scope: local native editor, collaborative workflow, manual creative handoff, and the first Discover desktop milestone. Updated 2026-11-04.
 
 ## Application boundaries
 
@@ -40,7 +40,15 @@ The prompt builder deterministically serializes a design brief, selected referen
 
 ## Official implementation references
 
-The optional `desktop/` package composes separate sandboxed Electron `WebContentsView` panes for Ranga, ChatGPT, and Pinterest. Its local toolbar exposes only validated navigation/layout commands; website panes have no Node integration or preload bridge. Each site has its own persistent session. The existing loopback web app and collaboration service run as separate processes, so the desktop does not change the editor or database architecture. Website pages and login providers may still require the regular browser fallback. See [desktop guide](../desktop/README.md).
+The optional `desktop/` package composes separate sandboxed Electron `WebContentsView` panes for Ranga, ChatGPT, and Pinterest. Discover displays Pinterest and ChatGPT; Design displays Ranga with ChatGPT; Focus expands Ranga. The existing site selection and split controls remain. The prompt review area reserves 240 pixels below native views; a bounded slider adjusts pane proportions and a swap action reverses them. The toolbar stays 132 pixels high.
+
+The file-based toolbar owns validated search/navigation/layout commands and explicit clipboard writes. Only the configured first-party Ranga view receives `ranga-preload.ts`, which publishes bounded project context, receives query/reference-navigation events, and offers a fixed ChatGPT-focus action. Main checks WebContents identity, main-frame identity, exact origin and editor route, project key and payload limits. Third-party panes and all popups have no preload or Node integration. There is no generic scripting, URL-loading, file, clipboard-read or cookie API in the first-party bridge.
+
+An optional `discoveryQuery` field, limited to 500 characters, lives in schema-version-1 documents and Yjs metadata. The editor commits query changes through its existing permission checks, history and persistence path; the service independently validates roles and canonical documents. Viewers/commenters can search without changing the project, keeping that query only in desktop memory. Context is cleared on navigation away, session revocation, or renderer failure. No duplicate project/reference database is introduced.
+
+Search normalizes a query and constructs a Pinterest website URL with `URLSearchParams`. It does not fetch results itself. A failed search navigation attempts Pinterest home once and retains the query for manual copying. ChatGPT opens at its normal home without query parameters, input automation or submission. Ranga's existing deterministic `buildPrompt` supplies the project brief, selected descriptions, dimensions, asset IDs and exact recipe schema; the toolbar combines it with the discovery query. The prompt remains local until the user copies and submits it. No third-party conversation is captured or persisted.
+
+Each site retains its own persistent session. The existing loopback web app and service remain separate processes. Sign-in modals and embedded-browser rejection cannot reliably be detected without reading third-party content; the toolbar reports navigation/loading failures and recognizable sign-in routes, while the actual website supplies its own login UI. System-browser fallback opens only the site home without transferring OAuth URLs or session tokens. See [desktop guide](../desktop/README.md).
 
 - Next.js version-matched guides in `node_modules/next/dist/docs/`, and [route handlers](https://nextjs.org/docs/app/getting-started/route-handlers).
 - [Fabric documentation](https://www.fabricjs.com/docs/) and installed Fabric 7 type declarations.

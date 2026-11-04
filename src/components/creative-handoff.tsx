@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowUpRight, Copy, Upload, Check } from "lucide-react";
 import { buildPrompt, emptyBrief, recipeToDocument } from "@/lib/design-recipe";
 import type { DesignDocument, DesignBrief } from "@/lib/document";
+import "@/lib/desktop-bridge";
 export function CreativeHandoff({
   document: doc,
   onChange,
@@ -70,8 +71,8 @@ export function CreativeHandoff({
         Open ChatGPT <ArrowUpRight size={14} />
       </a>
       <p className="quiet-note">
-        Use your own account in a separate tab. Ranga never reads that session
-        or sends this brief automatically.
+        Use your own account. Ranga never reads that session or sends this brief
+        automatically.
       </p>
       <div className="team-tabs">
         <button
@@ -89,6 +90,18 @@ export function CreativeHandoff({
       </div>
       {mode === "brief" ? (
         <>
+          <label className="field">
+            <span>Discovery query</span>
+            <input
+              disabled={readOnly}
+              maxLength={500}
+              value={doc.discoveryQuery ?? ""}
+              onChange={(event) =>
+                onChange({ ...doc, discoveryQuery: event.target.value })
+              }
+              placeholder="What do you want to design?"
+            />
+          </label>
           {field("graphicType", "Graphic type")}
           {field("headline", "Main headline")}
           {field("supportingText", "Supporting text", true)}
@@ -106,6 +119,13 @@ export function CreativeHandoff({
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(buildPrompt(doc));
+                if (window.rangaBridge) window.rangaBridge.openChatGPT();
+                else
+                  window.open(
+                    "https://chatgpt.com/",
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
                 setCopied(true);
                 setError("");
               } catch {
@@ -117,7 +137,7 @@ export function CreativeHandoff({
             }}
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}{" "}
-            {copied ? "Prompt copied" : "Copy for ChatGPT"}
+            {copied ? "Prompt copied" : "Copy instructions & open ChatGPT"}
           </button>
           <button
             className="text-link"

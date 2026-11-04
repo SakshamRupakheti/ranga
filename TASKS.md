@@ -1,6 +1,6 @@
 # Living task list
 
-Updated 2026-11-03. Preserve the existing Ranga editor. Revised direction: native collaboration and manual creative handoff, with no OpenAI, Pinterest, or Canva APIs in the MVP.
+Updated 2026-11-04. Preserve the existing Ranga editor. Revised direction: native collaboration and manual creative handoff, with no OpenAI, Pinterest, or Canva APIs in the MVP.
 
 ## Completed: native editor foundation
 
@@ -24,6 +24,16 @@ Updated 2026-11-03. Preserve the existing Ranga editor. Revised direction: nativ
 - [x] JPEG export, line height, preview, project search/sort, light/dark themes.
 - [x] Isolation, concurrent-edit, permissions, reconnect, restart and recovery tests. Final browser/build outcomes are recorded in docs/VERIFICATION.md.
 - [x] README, contributing guide, architecture decision log, migrations, CI configuration, launch checklist.
+
+## Ranga Discover and Bridge ([Issue #1](https://github.com/SakshamRupakheti/ranga/issues/1))
+
+- [x] Milestone 1: bounded unified search; encoded Pinterest website navigation; local project-aware ChatGPT prompt; Discover/Design/Focus modes; prompt review and copy/focus; explicit sign-in help, retry, manual-search and browser fallbacks.
+- [x] Project query persistence through existing IndexedDB/Yjs paths, with role checks, stale-project rejection, and narrow first-party IPC. No third-party pane receives a preload.
+- [x] Adjustable split proportions, swapping, focus expansion, original navigation/shortcuts, reference-board shortcut, and compact 132-pixel toolbar.
+- [ ] Milestone 2: unified reference tray with supported drop/paste/file previews, attribution and rights confirmation, reusing the existing reference board.
+- [ ] Milestone 3: fuller reference change instructions and explicit clipboard return through Bring into Ranga.
+- [ ] Milestone 4: unified image/recipe preview, checkpoint, canvas handoff and recovery through existing authorized paths. Existing recipe import already supports validation and checkpoints.
+- [ ] Milestone 5: end-to-end tray polish, accessibility/device testing and expanded failure coverage. Native cross-view drag/drop remains to be investigated; no arbitrary Pinterest image transfer is claimed.
 
 ## Partially complete or environment-dependent
 

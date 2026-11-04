@@ -1,10 +1,12 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
   session,
+  screen,
   shell,
   WebContentsView,
 } from "electron";
@@ -17,12 +19,20 @@ import {
   externalUrl,
   isCommand,
   isSite,
+  isMode,
+  normalizeQuery,
+  pinterestSearchUrl,
+  projectKey,
+  validContext,
+  discoveryPrompt,
   originLabel,
   paneBounds,
   rangaUrl,
   type Command,
   type Site,
   type WorkspaceState,
+  type Mode,
+  type ProjectContext,
 } from "./policy";
 
 app.setName("Ranga Workspace");
@@ -67,9 +77,33 @@ const failures = new Map<Site, string>();
 let selected: Site = "ranga";
 let focused: Site = "ranga";
 let split = false;
+let mode: Mode = "focus";
+let query = "";
+let context: ProjectContext | undefined;
+let promptOpen = false;
+let ratio = 0.5;
+let swapped = false;
+let pendingSearch = "";
+let externalOpened = false;
 let message =
-  "Copy prompts and import designs manually. Your browser projects stay in their original profile.";
+  "Describe a design to search Pinterest and prepare a ChatGPT prompt.";
 let pendingLink: string | undefined;
+
+function pageStatus(site: Site): string {
+  const contents = views.get(site)?.webContents;
+  if (!contents || contents.isDestroyed()) return "Not opened";
+  if (failures.has(site)) return "Unavailable";
+  if (contents.isLoading()) return "Loading";
+  const url = contents.getURL();
+  if (!url) return "Not opened";
+  const parsed = new URL(url);
+  if (
+    /\/(login|signin|sign-in|auth)(\/|$)/i.test(parsed.pathname) ||
+    /^(accounts\.|auth\.|login\.|appleid\.)/.test(parsed.hostname)
+  )
+    return "Sign-in page";
+  return "Page loaded";
+}
 
 function publish() {
   if (!window || window.isDestroyed() || window.webContents.isDestroyed())
@@ -88,6 +122,19 @@ function publish() {
     forward: ready ? contents.navigationHistory.canGoForward() : false,
     message: message || failures.get(focused) || "",
     hasLink: Boolean(pendingLink),
+    mode,
+    query,
+    projectKey: context?.key ?? null,
+    projectName: context?.name ?? "No project open",
+    editable: context?.editable ?? false,
+    prompt: discoveryPrompt(query, context),
+    promptOpen,
+    ratio,
+    pages: {
+      ranga: pageStatus("ranga"),
+      chatgpt: pageStatus("chatgpt"),
+      pinterest: pageStatus("pinterest"),
+    },
   };
   window.webContents.send("workspace:state", state);
 }
@@ -180,13 +227,31 @@ function protectContents(contents: WebContents, site: Site, popup = false) {
   contents.on("did-stop-loading", publish);
   contents.on("did-navigate", publish);
   contents.on("did-navigate-in-page", publish);
+  if (site === "ranga") {
+    const clearStaleContext = () => {
+      if (context && context.key !== projectKey(contents.getURL(), localUrl)) {
+        context = undefined;
+        query = "";
+        publish();
+      }
+    };
+    contents.on("did-start-navigation", (_event, _url, inPlace, mainFrame) => {
+      if (mainFrame && !inPlace) {
+        context = undefined;
+        query = "";
+        publish();
+      }
+    });
+    contents.on("did-navigate-in-page", clearStaleContext);
+  }
   contents.on("did-finish-load", () => {
     failures.delete(site);
+    if (site === "pinterest") pendingSearch = "";
     publish();
   });
   contents.on(
     "did-fail-load",
-    (_event, code, _description, _url, isMainFrame) => {
+    (_event, code, _description, failedUrl, isMainFrame) => {
       if (!isMainFrame || code === -3) return;
       const failure =
         site === "ranga"
@@ -194,10 +259,24 @@ function protectContents(contents: WebContents, site: Site, popup = false) {
           : `${names[site]} could not load. Try Reload or Open in browser; sign-in may require a regular browser.`;
       failures.set(site, failure);
       if (focused === site) message = failure;
+      if (
+        site === "pinterest" &&
+        pendingSearch &&
+        failedUrl === pendingSearch
+      ) {
+        pendingSearch = "";
+        message =
+          "Pinterest search could not load. Opening Pinterest home. Copy the query and paste it there, or use Open in browser.";
+        void contents.loadURL(homeUrls.pinterest).catch(() => {});
+      }
       publish();
     },
   );
   contents.on("render-process-gone", () => {
+    if (site === "ranga") {
+      context = undefined;
+      query = "";
+    }
     failures.set(
       site,
       `${names[site]} stopped responding. Press Reload to reopen it.`,
@@ -207,19 +286,25 @@ function protectContents(contents: WebContents, site: Site, popup = false) {
   });
 }
 
-function ensureView(site: Site) {
+function ensureView(site: Site, initialUrl = homeUrls[site]) {
   let view = views.get(site);
   if (view) return view;
   const ses = session.fromPartition(`persist:ranga-workspace-${site}`);
   configureSession(ses, site);
   view = new WebContentsView({
-    webPreferences: { ...securePreferences, session: ses },
+    webPreferences: {
+      ...securePreferences,
+      session: ses,
+      ...(site === "ranga"
+        ? { preload: path.join(__dirname, "ranga-preload.js") }
+        : {}),
+    },
   });
   views.set(site, view);
   view.setBackgroundColor("#faf8f2");
   protectContents(view.webContents, site);
   window!.contentView.addChildView(view);
-  void view.webContents.loadURL(homeUrls[site]).catch(() => {
+  void view.webContents.loadURL(initialUrl).catch(() => {
     /* did-fail-load reports it */
   });
   return view;
@@ -228,9 +313,20 @@ function ensureView(site: Site) {
 function layout() {
   if (!window || window.isDestroyed()) return;
   const visible: Site[] =
-    split && selected !== "ranga" ? ["ranga", selected] : [selected];
+    mode === "discover"
+      ? ["pinterest", "chatgpt"]
+      : split && selected !== "ranga"
+        ? ["ranga", selected]
+        : [selected];
+  if (swapped && visible.length === 2) visible.reverse();
   const [width, height] = window.getContentSize();
-  const bounds = paneBounds(width, height, visible.length === 2);
+  const bounds = paneBounds(
+    width,
+    height,
+    visible.length === 2,
+    ratio,
+    promptOpen ? 240 : 0,
+  );
   visible.forEach((site) => ensureView(site));
   for (const [site, view] of views) {
     const index = visible.indexOf(site);
@@ -241,19 +337,97 @@ function layout() {
 }
 
 function select(site: Site) {
+  if (mode === "discover") {
+    split = false;
+    mode = "focus";
+  }
   selected = site;
   focused = site;
   if (site === "ranga") split = false;
+  if (!split) mode = "focus";
   message = "";
   pendingLink = undefined;
   layout();
   views.get(site)?.webContents.focus();
 }
 
+function setMode(next: Mode) {
+  mode = next;
+  split = next !== "focus";
+  selected =
+    next === "discover" ? "pinterest" : next === "design" ? "chatgpt" : "ranga";
+  focused = next === "design" ? "ranga" : selected;
+  if (next === "focus") promptOpen = false;
+  message = "";
+  pendingLink = undefined;
+  layout();
+  views.get(focused)?.webContents.focus();
+}
+
+function search(value: unknown, key: unknown) {
+  try {
+    if (key !== (context?.key ?? null))
+      throw new Error(
+        "The active project changed. Review the query and search again.",
+      );
+    query = normalizeQuery(value);
+    const target = pinterestSearchUrl(query);
+    pendingSearch = target;
+    failures.delete("pinterest");
+    const existing = views.get("pinterest");
+    if (existing) void existing.webContents.loadURL(target).catch(() => {});
+    else ensureView("pinterest", target);
+    if (context?.editable)
+      views.get("ranga")?.webContents.send("ranga:discovery", {
+        type: "query",
+        key: context.key,
+        query,
+      });
+    setMode("discover");
+    message =
+      context && !context.editable
+        ? "Prompt ready. Read-only project: this query stays in this session. Paste and send in ChatGPT yourself."
+        : "Prompt ready. Copy it when you choose, then paste and send in ChatGPT. Sign in if either site asks.";
+  } catch (error) {
+    message =
+      error instanceof Error ? error.message : "Search could not start.";
+  }
+  publish();
+}
+
+function focusChatGPT() {
+  if (mode !== "discover") setMode("design");
+  focused = "chatgpt";
+  views.get("chatgpt")?.webContents.focus();
+  publish();
+}
+
+function copyText(value: string, confirmation: string) {
+  if (!value) {
+    message = "Enter a query or open a project first.";
+    return false;
+  }
+  try {
+    clipboard.writeText(value);
+    message = confirmation;
+    return true;
+  } catch {
+    promptOpen = true;
+    message =
+      "Clipboard is unavailable. Select and copy the text in the prompt panel.";
+    layout();
+    return false;
+  }
+}
+
 async function openInBrowser(url: string | undefined) {
   if (!url) return;
   try {
     await shell.openExternal(url);
+    externalOpened = true;
+    message =
+      "Opened in your browser. Return here when ready; website sessions remain separate.";
+    publish();
   } catch {
     message =
       "The system browser could not open. Try again or open the website manually.";
@@ -282,12 +456,55 @@ function runCommand(command: Command) {
       } else contents.reload();
       break;
     case "split":
+      if (mode === "discover") {
+        setMode("design");
+        break;
+      }
       split = !split;
+      mode = split ? "design" : "focus";
       if (split && selected === "ranga") selected = "chatgpt";
       focused = selected;
       message = "";
       layout();
       views.get(selected)?.webContents.focus();
+      break;
+    case "prompt":
+      promptOpen = !promptOpen;
+      layout();
+      break;
+    case "copy-prompt":
+      if (
+        copyText(
+          discoveryPrompt(query, context),
+          "Prompt copied. Paste and send it in ChatGPT yourself.",
+        )
+      ) {
+        const confirmation = message;
+        focusChatGPT();
+        message = confirmation;
+      }
+      break;
+    case "copy-query":
+      copyText(query, "Query copied. Paste it into Pinterest's search box.");
+      break;
+    case "retry-search":
+      search(query, context?.key ?? null);
+      break;
+    case "swap":
+      swapped = !swapped;
+      layout();
+      break;
+    case "references":
+      if (context) {
+        views.get("ranga")?.webContents.send("ranga:discovery", {
+          type: "references",
+          key: context.key,
+        });
+        setMode("focus");
+      } else {
+        setMode("focus");
+        message = "Open a project to use its existing reference board.";
+      }
       break;
     case "external":
       // Open the site's landing page: local session tokens and OAuth URLs must
@@ -317,7 +534,7 @@ function runCommand(command: Command) {
           title: "Ranga Workspace",
           message: "Your creative tools, side by side.",
           detail:
-            "Start Ranga in two terminals from the repository folder:\n\nnpm run service\nnpm run dev -- --port 3001\n\nSelect ChatGPT or Pinterest, then Split workspace. Sign in yourself. Copy a prompt from Ranga and paste it into ChatGPT; paste the returned JSON recipe into Ranga. Download images you may use and upload them in the editor.\n\nDesktop sessions are separate from Chrome/Edge. To move a browser-only project, export its JSON backup and import it here. Shared projects are available after signing into Ranga.\n\nSome websites or login providers may reject embedded browsers. Open in browser uses your regular browser instead. No APIs, account automation, or automatic transfers are included.",
+            "Start Ranga in two terminals from the repository folder:\n\nnpm run service\nnpm run dev -- --port 3001\n\nSearch sends only your query to Pinterest and prepares a local prompt. Discover shows Pinterest and ChatGPT; Design pairs Ranga with ChatGPT; Focus expands Ranga. Review the prompt, then Copy & ChatGPT. Paste and send yourself. Use References to return to the existing project board.\n\nIf Pinterest search fails, use Site home and Copy query, then search manually. Page loaded does not mean signed in. Sign in yourself; if the provider rejects this browser, select its pane and Open in browser. That opens the site's home page without transferring sessions or sign-in URLs.\n\nDesktop sessions are separate from Chrome/Edge. Export a JSON backup to move local work here, or sign into Ranga for shared projects. No third-party APIs, automated messages, clipboard monitoring, or remote content capture.",
         });
       break;
   }
@@ -334,6 +551,56 @@ function trusted(event: IpcMainEvent) {
   );
 }
 
+function trustedRanga(event: IpcMainEvent) {
+  const contents = views.get("ranga")?.webContents;
+  return Boolean(
+    contents &&
+    !contents.isDestroyed() &&
+    event.sender === contents &&
+    event.senderFrame === contents.mainFrame &&
+    projectKey(event.senderFrame.url, localUrl),
+  );
+}
+
+ipcMain.on("ranga:context", (event, value: unknown) => {
+  if (!trustedRanga(event)) return;
+  if (value === null) {
+    context = undefined;
+    query = "";
+    publish();
+    return;
+  }
+  if (!validContext(value, projectKey(event.senderFrame!.url, localUrl)))
+    return;
+  if (!context || context.key !== value.key || context.query !== value.query)
+    query = value.query;
+  context = value;
+  publish();
+});
+ipcMain.on("ranga:chatgpt", (event) => {
+  if (trustedRanga(event)) focusChatGPT();
+});
+ipcMain.on("workspace:mode", (event, value: unknown) => {
+  if (trusted(event) && isMode(value)) setMode(value);
+});
+ipcMain.on("workspace:search", (event, value: unknown) => {
+  if (!trusted(event) || !value || typeof value !== "object") return;
+  const data = value as { query?: unknown; projectKey?: unknown };
+  if (Object.keys(data).length === 2) search(data.query, data.projectKey);
+});
+ipcMain.on("workspace:resize", (event, value: unknown) => {
+  if (
+    trusted(event) &&
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0.35 &&
+    value <= 0.65
+  ) {
+    ratio = value;
+    layout();
+  }
+});
+
 ipcMain.on("workspace:select", (event, site: unknown) => {
   if (trusted(event) && isSite(site)) select(site);
 });
@@ -345,9 +612,10 @@ ipcMain.on("workspace:ready", (event) => {
 });
 
 function createWindow() {
+  const workArea = screen.getPrimaryDisplay().workAreaSize;
   window = new BrowserWindow({
-    width: 1480,
-    height: 1000,
+    width: Math.max(960, Math.min(1480, workArea.width)),
+    height: Math.max(650, Math.min(1000, workArea.height)),
     minWidth: 960,
     minHeight: 650,
     title: "Ranga Workspace",
@@ -365,6 +633,14 @@ function createWindow() {
     event.preventDefault(),
   );
   window.on("resize", layout);
+  window.on("focus", () => {
+    if (externalOpened) {
+      externalOpened = false;
+      message =
+        "Back in Ranga. Paste permitted results when ready. Reload a pane if needed.";
+      publish();
+    }
+  });
   window.on("closed", () => {
     for (const view of views.values()) {
       if (!view.webContents.isDestroyed()) view.webContents.close();
@@ -372,6 +648,8 @@ function createWindow() {
     for (const popup of popups) if (!popup.isDestroyed()) popup.destroy();
     views.clear();
     popups.clear();
+    context = undefined;
+    query = "";
     window = undefined;
   });
   void window.loadFile(toolbarPath);
@@ -404,6 +682,16 @@ void app.whenReady().then(() => {
             label: "Split workspace",
             accelerator: "CmdOrCtrl+Shift+S",
             click: () => runCommand("split"),
+          },
+          {
+            label: "Discover",
+            accelerator: "CmdOrCtrl+Alt+D",
+            click: () => setMode("discover"),
+          },
+          {
+            label: "Focus Ranga",
+            accelerator: "CmdOrCtrl+Alt+F",
+            click: () => setMode("focus"),
           },
           { type: "separator" },
           { role: "quit" },

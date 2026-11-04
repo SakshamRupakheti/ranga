@@ -23,7 +23,7 @@ No OpenAI, Pinterest, Canva, or paid-service credentials are required. Internal 
 
 ## Optional desktop workspace
 
-Keep Ranga, ChatGPT, and Pinterest in one desktop window, with separate sessions, navigation controls, and a split view. Start the local web app above, then run:
+Keep Ranga, ChatGPT, and Pinterest in one desktop window. **Discover** searches Pinterest and prepares a local ChatGPT prompt from one query. **Design** pairs the editor with ChatGPT; **Focus** expands Ranga. Start the local web app above, then run:
 
 ```sh
 npm ci --prefix desktop
@@ -31,6 +31,8 @@ npm start --prefix desktop
 ```
 
 The desktop preview uses Electron and needs no third-party API keys. Sign in and copy/import content manually. Browser-only projects stay in their original browser profile; move them with JSON backups or sign into Ranga for shared projects. Some website sign-ins may require the **Open in browser** fallback. See the [desktop guide](desktop/README.md) for setup, privacy, controls, tests, and current limits. This is a source-run preview; signed installers are not available yet.
+
+Open a project before searching to include its brief, selected reference descriptions, dimensions, and recipe schema. **Prompt** lets you review the result; **Copy & ChatGPT** copies it and focuses ChatGPT. Paste and submit yourself. Project queries use the existing save/sync path and permissions. The unified reference/import tray is a later milestone under [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1).
 
 ## Working features
 
