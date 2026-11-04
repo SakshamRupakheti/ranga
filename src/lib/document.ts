@@ -43,6 +43,10 @@ export const briefSchema = z.object({
   instructions: z.string().max(3000),
 });
 export type DesignBrief = z.infer<typeof briefSchema>;
+export const discoveryQuerySchema = z
+  .string()
+  .max(500)
+  .regex(/^[^\p{Cc}\p{Cf}]*$/u);
 export const layerSchema = z
   .object({
     id: z.string().min(1).max(100),
@@ -84,6 +88,7 @@ export const documentSchema = z
     layers: z.array(layerSchema).max(200),
     references: z.array(referenceSchema).max(12),
     brief: briefSchema.optional(),
+    discoveryQuery: discoveryQuerySchema.optional(),
     direction: z.string().max(5000),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),

@@ -332,6 +332,7 @@ test(
       );
       const changed = readShared(a.doc);
       changed.title = "Changed title";
+      changed.discoveryQuery = "Saved discovery direction";
       a.send(changed);
       await until(() => a.acks === 3);
       await request(
@@ -348,11 +349,22 @@ test(
       const v = await connect(viewer.cookie, id);
       const invalid = readShared(v.doc);
       invalid.title = "Forbidden mutation";
+      invalid.discoveryQuery = "Forbidden discovery mutation";
       v.send(invalid);
       await until(() => v.closed === 1008);
       assert.equal(
         (await (await request(owner.cookie, path)).json()).document.title,
         scene.title,
+      );
+      const c = await connect(commenter.cookie, id);
+      const forbiddenQuery = readShared(c.doc);
+      forbiddenQuery.discoveryQuery = "Commenters cannot change discovery";
+      c.send(forbiddenQuery);
+      await until(() => c.closed === 1008);
+      assert.equal(
+        (await (await request(owner.cookie, path)).json()).document
+          .discoveryQuery,
+        undefined,
       );
       await request(
         owner.cookie,
@@ -373,6 +385,7 @@ test(
       await until(() => a.closed !== 0);
       const offline = readShared(a.doc);
       offline.layers[0].x = 777;
+      offline.discoveryQuery = "Offline discovery query";
       writeShared(a.doc, offline, readShared(a.doc));
       const reconnect = await connect(owner.cookie, id);
       reconnect.socket.send(
@@ -389,6 +402,10 @@ test(
       await start();
       const recovered = await (await request(owner.cookie, path)).json();
       assert.equal(recovered.document.layers[0].x, 777);
+      assert.equal(
+        recovered.document.discoveryQuery,
+        "Offline discovery query",
+      );
       assert.equal(recovered.document.layers.length, 12);
       assert.equal(
         (await (await request(commenter.cookie, path + "/comments")).json())

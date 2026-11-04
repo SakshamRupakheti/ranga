@@ -35,3 +35,13 @@ Accepted 2026-11-03. The user's explicit open-source request replaces the earlie
 ## 008: Optional desktop composition without APIs
 
 Accepted 2026-11-03 following the user's request for a browser containing Ranga, ChatGPT, and Pinterest. Use maintained Electron/Chromium `WebContentsView` composition with separate persistent sessions. Keep the web app and service independent, with no Electron dependency for web-only contributors. Do not iframe third-party sites, strip website security headers, import browser cookies, inject automation, or use API keys. Users sign in and transfer content manually. Website/login-provider compatibility remains conditional, with an explicit system-browser fallback. Desktop source is an experimental preview; installers, update delivery, and platform/security release checks remain open.
+
+## 009: Discover as an extension of Bridge
+
+Accepted 2026-11-04 for the first milestone of the Discover/Bridge brief and [Issue #1](https://github.com/SakshamRupakheti/ranga/issues/1). Preserve the three existing WebContentsViews and add explicit Discover/Design/Focus layouts. Keep search coordination in the trusted toolbar/main process, and add a narrow preload only to the first-party Ranga view. External website views and popups retain their previous security restrictions and no preload.
+
+Store the project query as optional bounded document metadata through existing IndexedDB/Yjs and server authorization. Send only bounded project metadata and the existing locally built prompt to desktop; never send image bytes, auth tokens, or third-party content. Read-only users can explore without persisting project changes. Bind every context/query event to the current editor project to reject stale destinations.
+
+Pinterest's website search route was checked on 2026-11-04: it populated the search field, then showed a login gate. This is observed website behavior, not a stable API or proof of authenticated results. Use encoded query parameters, retain a one-attempt home fallback, and provide manual query copying/retry. ChatGPT receives no query parameters or automatic message. Keep source-only first-party clipboard writes behind explicit buttons; clipboard reading and the unified transfer tray remain later milestones.
+
+The work stays on `feature/ranga-discover` for review. No main merge or public deployment is part of this milestone.

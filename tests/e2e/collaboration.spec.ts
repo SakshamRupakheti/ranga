@@ -165,6 +165,9 @@ test("two accounts share a real canvas, recover offline edits, discuss a design,
       page.getByRole("link", { name: "Open ChatGPT" }),
     ).toHaveAttribute("target", "_blank");
     await page.getByLabel("Main headline").fill("College design night");
+    await page
+      .getByLabel("Discovery query")
+      .fill("University poster discovery");
     await page.getByRole("button", { name: "Review generated prompt" }).click();
     await expect(page.getByLabel("Generated prompt")).toContainText(
       "Quiet color, bold type",
@@ -214,6 +217,7 @@ test("two accounts share a real canvas, recover offline edits, discuss a design,
     const exported = await backup(page);
     expect(exported.layers).toHaveLength(2);
     expect(exported.references).toHaveLength(2);
+    expect(exported.discoveryQuery).toBe("University poster discovery");
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const jpg = page.waitForEvent("download");
     await page
@@ -286,7 +290,9 @@ test("two accounts share a real canvas, recover offline edits, discuss a design,
       await p.request
         .post("/api/auth/delete-user", {
           data: { password },
-          headers: { Origin: "http://127.0.0.1:3001" },
+          headers: {
+            Origin: process.env.RANGA_TEST_BASE_URL ?? "http://127.0.0.1:3001",
+          },
         })
         .catch(() => {});
     await second.close();
@@ -310,7 +316,9 @@ test("commenter and viewer sessions expose only their permitted controls", async
   const roles = ["owner", "commenter", "viewer"],
     password = "Ranga-role-check-123",
     suffix = crypto.randomUUID();
-  const headers = { Origin: "http://127.0.0.1:3001" };
+  const headers = {
+    Origin: process.env.RANGA_TEST_BASE_URL ?? "http://127.0.0.1:3001",
+  };
   try {
     for (let i = 0; i < pages.length; i++) {
       const result = await pages[i].request.post("/api/auth/sign-up/email", {
@@ -352,6 +360,8 @@ test("commenter and viewer sessions expose only their permitted controls", async
         .getByRole("button", { name: "Headline", exact: true })
         .click();
       await expect(pages[i].getByLabel("Text content")).toBeDisabled();
+      await pages[i].getByRole("button", { name: "Creative tools" }).click();
+      await expect(pages[i].getByLabel("Discovery query")).toBeDisabled();
       await pages[i].getByRole("button", { name: "Team", exact: true }).click();
     }
     const commenter = pages[1],

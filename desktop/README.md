@@ -1,6 +1,6 @@
 # Ranga Workspace desktop preview
 
-An optional Electron desktop window for Ranga, ChatGPT, and Pinterest. Select a site or use **Split workspace** to keep Ranga on the left and a creative tool on the right. No third-party API keys are required. This is an experimental source-run desktop shell, not a packaged browser release.
+An optional Electron desktop window for Ranga, ChatGPT, and Pinterest, now with the first **Ranga Discover** milestone. Search once to open Pinterest search and prepare a local ChatGPT prompt. No third-party API keys are required. This is an experimental source-run desktop shell, not a packaged browser release.
 
 ## Start
 
@@ -29,16 +29,24 @@ Desktop has its own browser profile. It cannot see local projects saved in Chrom
 
 Sign into ChatGPT and Pinterest yourself in their panes. Sessions persist separately for each site. Existing Chrome/Edge sign-ins are not imported. Some sites and identity providers reject embedded browsers or require features this preview does not support. **Open in browser** opens the site's home page in your regular browser; it does not transfer the desktop session or its sign-in URL. Authenticated ChatGPT/Pinterest compatibility is not guaranteed or verified by the automated tests.
 
-1. Add reference links, descriptions, or images you have permission to use in Ranga.
-2. Copy the prompt from Ranga's creative handoff panel and paste it into ChatGPT.
-3. Copy the resulting JSON recipe into Ranga's recipe importer for validation and editable layers.
-4. Download any permitted image yourself, then upload it in Ranga. Use the reference board's paste area with Ctrl/Cmd+V for clipboard images. The separate **Paste image** button uses clipboard-read permission, which this preview denies.
+1. Open a Ranga project, then enter a design query in the desktop search bar. **Search** sends only the query to Pinterest and displays Pinterest beside ChatGPT. It does not send a ChatGPT message. Queries accept up to 500 characters, normalize whitespace, and reject hidden control characters.
+2. Use **Prompt** to review the locally prepared instructions. An open project adds its brief, selected reference descriptions, dimensions, available image IDs and existing recipe schema. Without a project, you get a general design-discussion prompt.
+3. Choose **Copy & ChatGPT**, then paste and submit yourself. **Copy instructions & open ChatGPT** in the editor's Creative tools panel also copies and focuses the desktop pane. Attach permitted images manually.
+4. Use **References** to return to the active project's existing reference board. Add attributed source links or images you have permission to use. This shortcut expands Ranga; a reference tray alongside both discovery panes is a later milestone.
+5. Paste a returned JSON recipe into the existing **Creative tools → Import result** validator, review it and apply. Download permitted raster results yourself, then upload them in Ranga. Use the reference board's paste area with Ctrl/Cmd+V for clipboard images. The separate clipboard-read button remains denied in desktop.
+
+Editable projects save the latest discovery query through the normal document history, autosave and shared synchronization. **Creative tools → Discovery query** also lets you edit it on the web. Viewers/commenters can search but their new query stays only in the desktop session; they cannot change saved project metadata. Queries without an open project also stay in memory. Opening another project restores that project's query. Prompts are not stored separately, and Ranga does not capture ChatGPT conversations.
+
+Pinterest's website search route was checked on 2026-11-04: the query appeared in its search field, followed by a login gate. It is not a guaranteed API. If direct navigation fails, Ranga attempts Pinterest home once; open **Prompt → Copy query** and paste into Pinterest's own search box. **Retry search** retries explicitly. A loaded page does not prove successful sign-in or relevant results. Known sign-in routes are labeled; login modals and browser-rejection messages remain the website's own UI. Use **Help** and **Open in browser** when needed. See Pinterest's [search guidance](https://help.pinterest.com/en-gb/article/search-for-ideas-on-pinterest).
 
 There is no automatic account connection, scraping, prompt submission, image download, or transfer of website content. The sites' normal terms, subscriptions, usage limits, and sign-in requirements still apply. The Ranga project license does not license their brands or content.
 
 ## Controls
 
 - **Ranga / ChatGPT / Pinterest**: select a pane. Ctrl/Cmd+1, 2, or 3 also work.
+- **Discover**: Pinterest and ChatGPT together. Ctrl/Cmd+Alt+D opens it.
+- **Design**: Ranga with ChatGPT. **Focus** expands Ranga and closes the prompt panel; Ctrl/Cmd+Alt+F also works.
+- **Prompt**: review/copy the generated prompt or query, retry a search, adjust pane proportions between 35% and 65%, swap sides, or close the panel. It never overlays the native views. At compact window sizes, close the panel or use a single tool for more room.
 - **Split workspace**: Ranga on the left; the selected creative tool on the right. Ctrl/Cmd+Shift+S toggles it. Selecting Ranga returns to a single pane.
 - **Back / Forward / Reload / Site home**: operate on the last focused visible pane. Click a pane to focus it. Ctrl/Cmd+R reloads it.
 - **Open in browser**: open that site's home page externally. Other HTTPS destinations show an explicit **Open link** choice in the toolbar.
@@ -56,7 +64,9 @@ Optional environment variables:
 
 Browser storage, site cookies, and local Ranga projects persist in the desktop profile. Keep it private and export work before deleting it. This shell has no sync or telemetry service, but third-party sites still make their own network requests when you open them.
 
-Website panes use separate persistent sessions and sandboxed `WebContentsView` instances. Node integration and privileged preloads are absent from every website pane. Only the local toolbar has a narrow IPC bridge, with sender/frame checks and fixed command names. Navigation is restricted to the selected site and explicitly listed sign-in hosts; system-browser handoff rejects executable/custom protocols. The toolbar shows the current origin without URL queries or fragments. Web security, certificate validation, and website headers remain enabled. Downloads prompt for a destination and are never auto-opened. Microphone, camera, location, devices, notifications, and programmatic clipboard reads are denied in this preview.
+Website panes use separate persistent sessions and sandboxed `WebContentsView` instances. Node integration is disabled everywhere. ChatGPT, Pinterest, and all popups have no preload. The local toolbar has a narrow IPC bridge for fixed commands, bounded search inputs and explicit clipboard writes. Only the configured first-party Ranga view receives a separate minimal bridge for project context, query/reference events, and ChatGPT focus. Main validates sender, frame, origin, editor route, project key and payload bounds (including a 150 KB prompt limit). It cannot script external pages, read clipboard content, access cookies or open arbitrary files/URLs.
+
+Navigation remains restricted to the selected site and explicitly listed sign-in hosts; system-browser handoff rejects executable/custom protocols. The toolbar shows the current origin without URL queries or fragments. Web security, certificate validation, and website headers remain enabled. Downloads prompt for a destination and are never auto-opened. Microphone, camera, location, devices, notifications, and programmatic clipboard reads are denied in this preview. The unified clipboard/import tray is not part of this milestone.
 
 ## Verify and contribute
 
@@ -65,7 +75,9 @@ npm test --prefix desktop
 npm run test:smoke --prefix desktop
 ```
 
-The smoke test requires the root dev dependencies (`npm ci`). It launches Electron in an isolated temporary profile, serves a synthetic local Ranga page, and uses clearly labeled third-party page fixtures. It checks actual pane switching/splitting, session isolation, renderer privileges, page history, external-link handling, resizing, and offline recovery. It does not sign into live services or touch the user's browser data. Linux requires a graphical session (for example, `xvfb-run -a npm run test:smoke --prefix desktop`). Windows sandboxed automation may need permission to launch Electron.
+The two smoke tests require the root dev dependencies (`npm ci`). They launch Electron in isolated temporary profiles, serve synthetic first-party pages, and use clearly labeled third-party fixtures. They check search encoding, all workspace modes, prompt preparation, project switching, bounded/forged IPC, denied clipboard reads, explicit copying, layout/resize, sign-in-route labeling, failed-search fallback/retry, session isolation, navigation, and offline recovery. Clipboard writes and system-browser opens are stubbed so tests do not alter your OS clipboard or launch external browsers. Root browser tests separately exercise the real editor's query persistence, bridge event handling, shared permissions, recipes and exports. No automated test proves real-world third-party login compatibility.
+
+For a separate browser test service while Ranga is open, set `RANGA_TEST_BASE_URL=http://127.0.0.1:3011` and `RANGA_TEST_SERVICE_PORT=3013` before `npm run test:e2e`. The test service uses `.ranga-test-data/browser-3013`. A custom production test build must use the matching `RANGA_BACKEND_URL` when building; the recorded Discover browser run uses the development server. Linux desktop tests require a graphical session (for example, `xvfb-run -a npm run test:smoke --prefix desktop`). Windows sandboxed automation may need permission to launch Electron.
 
 Windows is the initial verification target. Signed installers, application icons made in Ranga, auto-update delivery, portable server packaging, expanded platform testing, and a deeper desktop security review remain release work. Keep Electron updated before wider distribution.
 

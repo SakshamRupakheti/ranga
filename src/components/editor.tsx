@@ -37,6 +37,7 @@ import {
   createDocument,
   newLayer,
   documentSchema,
+  discoveryQuerySchema,
   History,
   type DesignDocument,
   type Layer,
@@ -61,6 +62,8 @@ import { ThemeToggle } from "./theme-toggle";
 import { TeamPanel } from "./team-panel";
 import { CreativeHandoff } from "./creative-handoff";
 import { ReferenceBoard } from "./reference-board";
+import { buildPrompt } from "@/lib/design-recipe";
+import "@/lib/desktop-bridge";
 type Tab =
   "elements" | "references" | "brand" | "versions" | "assistant" | "team";
 export default function Editor() {
@@ -234,6 +237,42 @@ export default function Editor() {
       setError("That edit exceeds the supported document limits.");
     }
   }, []);
+  // Publish only first-party project metadata and the existing deterministic
+  // prompt. No canvas binaries, sessions, or remote website contents cross IPC.
+  useEffect(() => {
+    window.rangaBridge?.context(
+      doc
+        ? {
+            key: sharedId ? `shared:${sharedId}` : `local:${doc.id}`,
+            name: doc.title,
+            query: doc.discoveryQuery ?? "",
+            prompt: buildPrompt({ ...doc, discoveryQuery: undefined }),
+            editable,
+          }
+        : null,
+    );
+  }, [doc, sharedId, editable]);
+  useEffect(() => {
+    const bridge = window.rangaBridge;
+    if (!bridge) return;
+    const unsubscribe = bridge.subscribe((event) => {
+      const latest = current.current;
+      if (!latest) return;
+      const key = sharedId ? `shared:${sharedId}` : `local:${latest.id}`;
+      if (event.key !== key) return;
+      if (event.type === "references") {
+        setTab("references");
+        setLeftOpen(true);
+      } else if (event.type === "query" && canEdit(access.current)) {
+        const parsed = discoveryQuerySchema.safeParse(event.query);
+        if (parsed.success) commit({ ...latest, discoveryQuery: parsed.data });
+      }
+    });
+    return () => {
+      unsubscribe();
+      bridge.context(null);
+    };
+  }, [commit, sharedId]);
   const save = useCallback(async () => {
     const latest = current.current;
     if (!latest) return false;

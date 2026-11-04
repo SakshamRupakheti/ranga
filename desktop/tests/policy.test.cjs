@@ -8,6 +8,12 @@ const {
   originLabel,
   paneBounds,
   rangaUrl,
+  normalizeQuery,
+  pinterestSearchUrl,
+  discoveryPrompt,
+  validContext,
+  projectKey,
+  isMode,
 } = require("../dist/policy.js");
 const local = "http://127.0.0.1:3001/projects";
 
@@ -37,6 +43,73 @@ test("Ranga is restricted to the configured loopback origin", () => {
     allowedNavigation("ranga", "http://localhost:3001/", local),
     false,
   );
+});
+
+test("discovery normalizes queries, encodes one search parameter and rejects unbounded input", () => {
+  assert.equal(
+    normalizeQuery("  math\nposter\t orange & black  "),
+    "math poster orange & black",
+  );
+  const query = "数学 poster & q=extra #logo? 100%";
+  const url = new URL(pinterestSearchUrl(query));
+  assert.equal(url.origin, "https://www.pinterest.com");
+  assert.equal(url.pathname, "/search/pins/");
+  assert.equal(url.searchParams.get("q"), query);
+  assert.equal([...url.searchParams].length, 1);
+  assert.equal(url.hash, "");
+  assert.ok(allowedNavigation("pinterest", url.href, local));
+  for (const invalid of [
+    null,
+    {},
+    "",
+    " \n ",
+    "a".repeat(501),
+    "hidden\u0000text",
+    "bidi\u202etext",
+  ])
+    assert.throws(() => normalizeQuery(invalid));
+  assert.equal(discoveryPrompt(query), discoveryPrompt(query));
+  assert.match(discoveryPrompt(query), /attach permitted images myself/);
+});
+
+test("first-party context is bound to the editor project and bounded before clipboard use", () => {
+  const key = "local:one";
+  assert.equal(
+    projectKey(`${local.replace("/projects", "/editor")}?id=one`, local),
+    key,
+  );
+  assert.equal(projectKey("https://evil.test/editor?id=one", local), null);
+  assert.equal(projectKey(local + "?id=one", local), null);
+  const context = {
+    key,
+    name: "Poster",
+    query: "Orange",
+    prompt: "Existing recipe schema",
+    editable: true,
+  };
+  assert.ok(validContext(context, key));
+  for (const invalid of [
+    { ...context, key: "local:other" },
+    { ...context, prompt: "x".repeat(150001) },
+    { ...context, query: "x".repeat(501) },
+    { ...context, extra: "execute" },
+    { ...context, editable: "yes" },
+  ])
+    assert.equal(validContext(invalid, key), false);
+  assert.match(discoveryPrompt("Poster", context), /Existing recipe schema/);
+  assert.equal(validContext(context, null), false);
+  assert.ok(isMode("discover"));
+  assert.equal(isMode("execute"), false);
+});
+
+test("adjusted panes keep the prompt panel clear at minimum and large window sizes", () => {
+  for (const width of [960, 1920])
+    for (const ratio of [0.35, 0.5, 0.65]) {
+      const [left, right] = paneBounds(width, 650, true, ratio, 240);
+      assert.equal(left.y + left.height, 410);
+      assert.equal(right.x + right.width, width);
+      assert.ok(left.width > 300 && right.width > 300);
+    }
 });
 
 test("tool navigation allows official sites and sign-in, rejects spoofed hosts and privileges", () => {

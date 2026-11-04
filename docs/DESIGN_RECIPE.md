@@ -1,6 +1,6 @@
 # Editable design recipes
 
-Open **Creative tools** in the editor. Enter a brief, select references, then use **Copy for ChatGPT** and **Open ChatGPT**. The copy operation is deterministic and sends nothing to an AI service. The prompt contains text descriptions/source attribution, dimensions, background, and IDs of available project images. Attach permitted reference images in ChatGPT yourself when useful.
+Open **Creative tools** in the editor. Enter a brief, select references, then use **Copy instructions & open ChatGPT**. In desktop this focuses the existing ChatGPT pane; on the web it attempts a normal browser tab. If a browser blocks the tab, use the separate **Open ChatGPT** link. The copy operation is deterministic and sends nothing to an AI service. The prompt contains the discovery query, text descriptions/source attribution, dimensions, background, and IDs of available project images. Attach permitted reference images in ChatGPT yourself when useful.
 
 Use **Import result** to paste JSON or load a `.json` file. Validation shows the composition title, dimensions, and layer count before applying. Applying saves a version, replaces the composition, and preserves the reference board. Invalid input leaves the current design intact.
 

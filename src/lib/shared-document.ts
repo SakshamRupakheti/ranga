@@ -12,6 +12,7 @@ const metaKeys = [
   "createdAt",
   "updatedAt",
   "brief",
+  "discoveryQuery",
 ] as const;
 function equal(a: unknown, b: unknown) {
   return JSON.stringify(a) === JSON.stringify(b);

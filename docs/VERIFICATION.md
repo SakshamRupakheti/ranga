@@ -1,5 +1,31 @@
 # Verification record
 
+## Discover milestone 1, 2026-11-04
+
+Built on `c798c21` in `feature/ranga-discover`, associated with [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1). This section records the new milestone; the earlier baseline below is retained as history.
+
+| Check                                 | Result                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------ |
+| `npm run typecheck`                   | Passed                                                                               |
+| `npm run lint`                        | Passed with no warnings                                                              |
+| `npm test`                            | 11 passed, including the authenticated temporary-service test                        |
+| `npm run build`                       | Passed; Webpack production build and all routes generated                            |
+| `npm run test:e2e`                    | 16 passed in 1.8 minutes on isolated ports 3011/3013 using Chrome and the dev server |
+| `npm test --prefix desktop`           | 8 passed                                                                             |
+| `npm run test:smoke --prefix desktop` | 2 passed against actual Electron views and controlled third-party fixtures           |
+
+The browser suite ran with `RANGA_TEST_BASE_URL=http://127.0.0.1:3011` and `RANGA_TEST_SERVICE_PORT=3013`, using `.ranga-test-data/browser-3013`. Existing servers and user browser profiles were not restarted or used for these tests. Test-generated accounts were removed by the suite. The separate visual-test profile and preview process were cleaned up.
+
+New coverage includes query normalization/encoding and bounds, optional metadata backup/Yjs round trips, shared viewer/commenter rejection, offline query persistence across service restart, real-editor bridge event handling, stale project rejection, per-project restoration, prompt composition and explicit ChatGPT focus. Existing recipes, raster imports, PNG/JPEG/SVG/JSON exports, comments, invitations, collaboration, offline recovery and local project workflows still pass.
+
+Electron checks cover Discover/Design/Focus and legacy navigation, adjustable/swapped panes, a 960-pixel compact layout, prompt review, no automatic clipboard write on search, user-triggered copy, a simulated clipboard-write failure, denied remote clipboard reads, absent remote bridge/Node globals, exact IPC provenance including child-frame and remote-view rejection, oversized context rejection, readable sign-in-route status, failed Pinterest search followed by a home fallback, explicit retry, browser fallback and context removal when leaving a project. OS clipboard writes and external-browser launches are stubbed. The tests use no provider credentials and inspect no user's clipboard contents.
+
+A separate production-build check connected the actual Ranga editor to Electron using a synthetic project. The native Windows window was inspected in Design and Discover modes with clearly labeled Pinterest/ChatGPT fixtures. The real editor published its project name, persisted the query, and supplied its recipe-schema prompt. A larger default window could extend below the display; startup sizing now respects the display work area. Earlier fixture failures were corrected: UTF-8 response encoding, textarea value assertions, and native resize checks against actual content size (Windows pixel rounding).
+
+A live, read-only Pinterest browser check on 2026-11-04 populated the search box from `/search/pins/?q=...` but encountered a login gate. No login or challenge was completed. Authenticated result relevance and real ChatGPT/Pinterest account compatibility remain unverified. The implementation does not read remote DOM content and cannot classify every login modal, HTTP error page, or embedded-browser rejection; website UI plus manual retry/home/system-browser controls provide recovery.
+
+Milestones 2–5 remain in TASKS.md: unified reference tray, preview/rights confirmation, clipboard return, and integrated canvas handoff. Hosted CI is tracked separately from these local results. No merge to main or public deployment was performed.
+
 Updated 2026-11-03. Windows, Node.js 24.15.0, Next.js 16.4.4, React 19.3.1, Fabric 7.4.0, Better Auth 1.7.15 and Yjs 13.6.33. Browser checks use isolated Chrome profiles, not the founder's browser data.
 
 ## Current results

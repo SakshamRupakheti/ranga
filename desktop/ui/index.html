@@ -14,10 +14,32 @@
   <body>
     <header class="workspace">
       <div class="topline">
-        <div class="brand">Ranga<span>WORKSPACE</span></div>
+        <div class="brand">Ranga</div>
+        <form id="search-form" role="search">
+          <label class="sr-only" for="query">Design discovery query</label>
+          <input
+            id="query"
+            type="search"
+            maxlength="500"
+            autocomplete="off"
+            placeholder="What do you want to design?"
+            aria-describedby="search-help"
+          />
+          <button type="submit" class="primary">Search</button>
+        </form>
+        <nav class="modes" aria-label="Workspace mode">
+          <button data-mode="discover" aria-pressed="false">Discover</button>
+          <button data-mode="design" aria-pressed="false">Design</button>
+          <button data-mode="focus" aria-pressed="true">Focus</button>
+        </nav>
+        <span id="project" title="Open a project in Ranga to keep its query"
+          >No project open</span
+        >
+      </div>
+      <div class="navigation">
         <nav class="sites" aria-label="Creative tools">
           <button data-site="ranga" aria-pressed="true">
-            <span class="site-dot ranga"></span>Ranga
+            <span class="site-dot"></span>Ranga
           </button>
           <button data-site="chatgpt" aria-pressed="false">
             <span class="site-dot chatgpt"></span>ChatGPT
@@ -26,14 +48,6 @@
             <span class="site-dot pinterest"></span>Pinterest
           </button>
         </nav>
-        <div class="actions">
-          <button data-command="split" id="split" aria-pressed="false">
-            <span aria-hidden="true">◫</span> Split workspace
-          </button>
-          <button data-command="help" class="quiet">Help</button>
-        </div>
-      </div>
-      <div class="navigation">
         <div class="history" aria-label="Page navigation">
           <button
             data-command="back"
@@ -64,12 +78,36 @@
           <span id="activity" class="activity"></span
           ><span id="origin">127.0.0.1:3001</span><span id="pane">Ranga</span>
         </div>
+        <button
+          data-command="split"
+          id="split"
+          aria-pressed="false"
+          title="Ranga and the selected tool"
+        >
+          Split workspace
+        </button>
         <button data-command="external" class="external">
-          Open in browser <span aria-hidden="true">↗</span>
+          Open in browser ↗
+        </button>
+        <button
+          data-command="prompt"
+          id="prompt-toggle"
+          aria-expanded="false"
+          aria-controls="prompt-panel"
+        >
+          Prompt
+        </button>
+        <button
+          data-command="copy-prompt"
+          id="copy-prompt"
+          class="primary"
+          disabled
+        >
+          Copy &amp; ChatGPT
         </button>
       </div>
       <div class="status" role="status" aria-live="polite">
-        <span id="message">Loading your workspace…</span>
+        <span id="message">Describe a design to get started.</span>
         <button data-command="open-link" id="open-link" hidden>
           Open link ↗
         </button>
@@ -81,9 +119,60 @@
         >
           ×
         </button>
-        <span class="local-note" id="note">YOUR TOOLS. YOUR PROCESS.</span>
+        <button data-command="references" id="references">References</button>
+        <button data-command="help">Help</button>
       </div>
     </header>
     <main aria-label="Website panes"></main>
+    <section
+      id="prompt-panel"
+      aria-label="Discovery prompt and controls"
+      hidden
+    >
+      <div class="prompt-info">
+        <div class="eyebrow">DISCOVERY / HANDOFF</div>
+        <h1>Your direction, ready to discuss.</h1>
+        <p id="search-help">
+          Search sends your query to Pinterest. The prompt stays here until you
+          copy it. Paste and send in ChatGPT yourself.
+        </p>
+        <p>
+          Page loaded does not confirm sign-in. If a site asks, sign in there.
+          If unsupported, select it and use Open in browser.
+        </p>
+        <div class="prompt-actions">
+          <button data-command="copy-query" id="copy-query" disabled>
+            Copy query
+          </button>
+          <button data-command="retry-search" id="retry-search" disabled>
+            Retry search
+          </button>
+        </div>
+      </div>
+      <label class="prompt-text" for="prompt"
+        ><span>Prepared prompt <small id="context-note"></small></span
+        ><textarea
+          id="prompt"
+          readonly
+          placeholder="Enter a query or open a project to prepare a prompt."
+        ></textarea>
+      </label>
+      <div class="layout-controls">
+        <span class="eyebrow">WORKSPACE</span>
+        <label for="pane-ratio">Left pane width</label>
+        <input
+          id="pane-ratio"
+          type="range"
+          min="35"
+          max="65"
+          value="50"
+          step="1"
+        />
+        <button data-command="swap" id="swap">Swap sides</button>
+        <button data-command="prompt" aria-label="Close prompt panel">
+          Close panel
+        </button>
+      </div>
+    </section>
   </body>
 </html>
