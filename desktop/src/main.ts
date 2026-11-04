@@ -28,8 +28,11 @@ import {
 app.setName("Ranga Workspace");
 // Tests and portable development runs can select an isolated profile. This never
 // imports cookies or storage from an existing browser.
-if (process.env.RANGA_DESKTOP_PROFILE) {
-  const profile = path.resolve(process.env.RANGA_DESKTOP_PROFILE);
+const profileDirectory =
+  process.env.RANGA_DESKTOP_PROFILE ??
+  (!app.isPackaged ? path.join(__dirname, "../.profiles/local") : undefined);
+if (profileDirectory) {
+  const profile = path.resolve(profileDirectory);
   mkdirSync(profile, { recursive: true });
   app.setPath("userData", profile);
 }

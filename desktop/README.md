@@ -48,11 +48,11 @@ There is no automatic account connection, scraping, prompt submission, image dow
 
 Optional environment variables:
 
-| Variable                | Purpose                                                                                                                                                           |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RANGA_DESKTOP_URL`     | Local Ranga URL. Default `http://127.0.0.1:3001/projects`. Only loopback HTTP/HTTPS is accepted. Use the same origin as your collaboration service configuration. |
-| `RANGA_DESKTOP_PROFILE` | Absolute path for a separate desktop profile. Default is Electron's application user-data directory. Use `desktop/.profiles/` for an ignored development profile. |
-| `RANGA_DESKTOP_TEST=1`  | Hide the window for automated tests. Does not relax website security or navigation rules.                                                                         |
+| Variable                | Purpose                                                                                                                                                                                                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RANGA_DESKTOP_URL`     | Local Ranga URL. Default `http://127.0.0.1:3001/projects`. Only loopback HTTP/HTTPS is accepted. Use the same origin as your collaboration service configuration.                                                                                               |
+| `RANGA_DESKTOP_PROFILE` | Absolute path for a separate desktop profile. Source runs default to the ignored `desktop/.profiles/local/` directory, so reopening this checkout retains your desktop work and sign-ins. Packaged builds would use Electron's application user-data directory. |
+| `RANGA_DESKTOP_TEST=1`  | Hide the window for automated tests. Does not relax website security or navigation rules.                                                                                                                                                                       |
 
 Browser storage, site cookies, and local Ranga projects persist in the desktop profile. Keep it private and export work before deleting it. This shell has no sync or telemetry service, but third-party sites still make their own network requests when you open them.
 
