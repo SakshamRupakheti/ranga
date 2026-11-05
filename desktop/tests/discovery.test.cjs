@@ -25,8 +25,10 @@ test(
         document.querySelector('#publish').onclick = () => window.rangaBridge.context(ctx);
         document.querySelector('#readonly').onclick = () => window.rangaBridge.context({...ctx, editable: false});
         window.receivedQueries = [];
+        window.bringRequests = [];
         window.referenceLayout = null;
         window.rangaBridge?.subscribe(event => {
+          if (event.type === 'bring') window.bringRequests.push(event);
           if (event.type === 'layout') window.referenceLayout = event;
           if (event.type === 'query') { window.receivedQueries.push(event.query); ctx.query = event.query; window.rangaBridge.context(ctx); }
         });
@@ -118,6 +120,22 @@ test(
         .find((p) => p.url().startsWith("https://www.pinterest.com"));
       assert.equal(new URL(pin.url()).searchParams.get("q"), query);
       await expect(chat.getByLabel("Manual message")).toHaveValue("");
+      // Bringing a result changes the first-party view, without clipboard access.
+      await toolbar.locator("#bring").click();
+      await expect
+        .poll(() => ranga.evaluate(() => window.bringRequests))
+        .toEqual([{ type: "bring", key: "local:fixture" }]);
+      await expect(toolbar.locator('[data-mode="design"]')).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      assert.deepEqual(
+        await desktop.evaluate(() => globalThis.fixtureCopies),
+        [],
+      );
+      await toolbar
+        .getByRole("button", { name: "Discover", exact: true })
+        .click();
       assert.deepEqual(
         await desktop.evaluate(() => globalThis.fixtureCopies),
         [],
@@ -291,6 +309,16 @@ test(
           { query: "hijacked", projectKey: "local:fixture" },
         );
         ipcMain.emit(
+          "workspace:command",
+          { sender: remote, senderFrame: remote.mainFrame },
+          "bring",
+        );
+        ipcMain.emit(
+          "workspace:command",
+          { sender: local, senderFrame: local.mainFrame.frames[0] },
+          "bring",
+        );
+        ipcMain.emit(
           "ranga:context",
           { sender: local, senderFrame: local.mainFrame.frames[0] },
           fake,
@@ -313,6 +341,10 @@ test(
         "Mathematics poster",
       );
       await expect(toolbar.locator("#query")).toHaveValue(query);
+      assert.equal(
+        (await ranga.evaluate(() => window.bringRequests)).length,
+        1,
+      );
       await expect(toolbar.locator('[data-mode="discover"]')).toHaveAttribute(
         "aria-pressed",
         "true",
@@ -328,6 +360,27 @@ test(
         "active project changed",
       );
       await expect(toolbar.locator("#query")).toHaveValue(query);
+
+      // Oversized first-party prompts replace the old context with an explicit
+      // sentinel, so the toolbar cannot accidentally copy stale instructions.
+      await ranga.evaluate(() =>
+        window.rangaBridge.context({
+          key: "local:fixture",
+          name: "Large project",
+          query: "Large direction",
+          prompt: null,
+          editable: true,
+        }),
+      );
+      await expect(toolbar.locator("#project")).toHaveText("Large project");
+      await expect(toolbar.locator("#prompt")).toHaveValue("");
+      await expect(toolbar.locator("#copy-prompt")).toBeDisabled();
+      await expect(toolbar.locator("#context-note")).toContainText(
+        "Creative tools",
+      );
+      await ranga
+        .getByRole("button", { name: "Open project", exact: true })
+        .click();
 
       await toolbar
         .getByRole("button", { name: "Design", exact: true })
@@ -424,6 +477,11 @@ test(
       await expect(toolbar.locator("#project")).toHaveText("No project open");
       await expect(toolbar.locator("#query")).toHaveValue("");
       await expect(toolbar.locator("#copy-prompt")).toBeDisabled();
+      await toolbar.locator("#bring").click();
+      await expect(toolbar.locator("#message")).toContainText(
+        "Open a Ranga project",
+      );
+      assert.equal((await visible()).length, 1);
     } finally {
       if (desktop) await desktop.close();
       await new Promise((resolve) => {

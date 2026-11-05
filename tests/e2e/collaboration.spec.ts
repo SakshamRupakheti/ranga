@@ -214,10 +214,12 @@ test("two accounts share a real canvas, recover offline edits, discuss a design,
       "Quiet color, bold type",
     );
     await page
-      .getByRole("button", { name: "Import result", exact: true })
+      .getByRole("button", { name: "Bring into Ranga", exact: true })
       .click();
-    await page.getByLabel("Design recipe JSON").fill('{"script":"alert(1)"}');
-    await page.getByRole("button", { name: "Validate recipe" }).click();
+    await page
+      .getByLabel("Returned text or recipe")
+      .fill('{"script":"alert(1)"}');
+    await page.getByRole("button", { name: "Preview result" }).click();
     await expect(
       page.locator(".left-panel-content [role=alert]"),
     ).toBeVisible();
@@ -249,9 +251,45 @@ test("two accounts share a real canvas, recover offline edits, discuss a design,
         },
       ],
     };
-    await page.getByLabel("Design recipe JSON").fill(JSON.stringify(recipe));
-    await page.getByRole("button", { name: "Validate recipe" }).click();
+    await page
+      .getByLabel("Returned text or recipe")
+      .fill(JSON.stringify(recipe));
+    await page.getByRole("button", { name: "Preview result" }).click();
     await synced(page);
+    let releaseCheckpoint!: () => void;
+    let checkpointStarted!: () => void;
+    const checkpointGate = new Promise<void>((resolve) => {
+      releaseCheckpoint = resolve;
+    });
+    const checkpointSeen = new Promise<void>((resolve) => {
+      checkpointStarted = resolve;
+    });
+    await page.route("**/api/projects/*/versions", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      checkpointStarted();
+      await checkpointGate;
+      await route.continue();
+    });
+    await page.getByRole("button", { name: "Apply validated design" }).click();
+    await checkpointSeen;
+    try {
+      await b.getByLabel("Project title").fill("Updated while saving");
+      await synced(b);
+      await expect(page.getByLabel("Project title")).toHaveValue(
+        "Updated while saving",
+      );
+    } finally {
+      releaseCheckpoint();
+    }
+    await expect(
+      page.locator(".bring-into-ranga [role=alert]").last(),
+    ).toContainText("composition changed");
+    await expect(
+      page.getByRole("button", { name: "Apply validated design" }),
+    ).toBeDisabled();
+    expect((await backup(page)).layers).toHaveLength(3);
+    await page.unroute("**/api/projects/*/versions");
+    await page.getByRole("button", { name: "Preview again" }).click();
     await page.getByRole("button", { name: "Apply validated design" }).click();
     await expect(page.getByLabel("Project title")).toHaveValue("Campus poster");
     await synced(page);
@@ -409,6 +447,16 @@ test("commenter and viewer sessions expose only their permitted controls", async
       await expect(pages[i].getByLabel("Text content")).toBeDisabled();
       await pages[i].getByRole("button", { name: "Creative tools" }).click();
       await expect(pages[i].getByLabel("Discovery query")).toBeDisabled();
+      await expect(pages[i].getByLabel("Elements to keep")).toBeDisabled();
+      await pages[i]
+        .getByRole("button", { name: "Bring into Ranga", exact: true })
+        .click();
+      await expect(
+        pages[i].getByLabel("Returned text or recipe"),
+      ).toBeDisabled();
+      await expect(
+        pages[i].getByRole("button", { name: "Read clipboard", exact: true }),
+      ).toBeDisabled();
       await pages[i]
         .getByRole("button", { name: "References", exact: true })
         .click();

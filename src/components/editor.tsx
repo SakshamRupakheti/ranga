@@ -61,6 +61,9 @@ import {
 import { ThemeToggle } from "./theme-toggle";
 import { TeamPanel } from "./team-panel";
 import { CreativeHandoff } from "./creative-handoff";
+import { ChangeInstructionFields } from "./change-instructions";
+import { PromptHandoff } from "./prompt-handoff";
+import type { RecipeImportRequest } from "./bring-into-ranga";
 import { ReferenceBoard } from "./reference-board";
 import {
   ReferenceDestinationPicker,
@@ -70,7 +73,11 @@ import {
   validateReferenceImport,
   type Reference,
 } from "@/lib/reference-import";
-import { buildPrompt } from "@/lib/design-recipe";
+import {
+  buildPrompt,
+  recipeToDocument,
+  compositionKey,
+} from "@/lib/design-recipe";
 import "@/lib/desktop-bridge";
 type Tab =
   "elements" | "references" | "brand" | "versions" | "assistant" | "team";
@@ -109,6 +116,7 @@ export default function Editor() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [referenceOnly, setReferenceOnly] = useState(false);
+  const [handoffRequest, setHandoffRequest] = useState(0);
   const [referenceBusy, setReferenceBusy] = useState(false);
   const referencePending = useRef(false);
   const referenceEpoch = useRef(0);
@@ -233,7 +241,7 @@ export default function Editor() {
     return () => clearTimeout(timer);
   }, [doc, editable, sharedId, status]);
   const commit = useCallback((next: DesignDocument) => {
-    if (!canEdit(access.current)) return;
+    if (!canEdit(access.current)) return false;
     try {
       const valid = documentSchema.parse({
         ...next,
@@ -241,7 +249,7 @@ export default function Editor() {
       });
       if (collaboration.current) {
         collaboration.current.change(valid, current.current!);
-        return;
+        return true;
       }
       history.current?.push(valid);
       setHistoryState({
@@ -251,20 +259,29 @@ export default function Editor() {
       current.current = valid;
       setDoc(valid);
       setStatus("Unsaved changes");
+      return true;
     } catch {
       setError("That edit exceeds the supported document limits.");
+      return false;
     }
   }, []);
   // Publish only first-party project metadata and the existing deterministic
   // prompt. No canvas binaries, sessions, or remote website contents cross IPC.
   useEffect(() => {
+    if (!window.rangaBridge) return;
+    const prompt = doc
+      ? buildPrompt({ ...doc, discoveryQuery: undefined })
+      : "";
     window.rangaBridge?.context(
       doc
         ? {
             key: sharedId ? `shared:${sharedId}` : `local:${doc.id}`,
             name: doc.title,
             query: doc.discoveryQuery ?? "",
-            prompt: buildPrompt({ ...doc, discoveryQuery: undefined }),
+            prompt:
+              new TextEncoder().encode(prompt).byteLength <= 150_000
+                ? prompt
+                : null,
             editable,
           }
         : null,
@@ -281,6 +298,12 @@ export default function Editor() {
       if (event.type === "references") {
         setTab("references");
         setLeftOpen(true);
+      } else if (event.type === "bring") {
+        setReferenceOnly(false);
+        setPreviewMode(false);
+        setTab("assistant");
+        setLeftOpen(true);
+        setHandoffRequest((value) => value + 1);
       } else if (
         event.type === "layout" &&
         typeof event.referenceOnly === "boolean"
@@ -613,18 +636,66 @@ export default function Editor() {
       setNotice("Shared version saved.");
       return;
     }
-    if (!doc) return;
+    const latest = current.current;
+    if (!latest) throw new Error("Open a project before saving a version.");
     const snapshot = {
       id: crypto.randomUUID(),
-      name: `Version ${versions.length + 1}`,
+      name: `Version ${currentVersions.current.length + 1}`,
       createdAt: new Date().toISOString(),
-      document: structuredClone(doc),
+      document: structuredClone(latest),
     };
-    const next = [snapshot, ...versions].slice(0, 20);
+    const next = [snapshot, ...currentVersions.current].slice(0, 20);
     currentVersions.current = next;
     setVersions(next);
     setStatus("Unsaved changes");
+    if (!(await save()))
+      throw new Error(
+        "The checkpoint could not be saved. Export a backup before applying this result.",
+      );
     setNotice("Version saved. You can restore it from History.");
+  }
+  async function applyReturnedRecipe(request: RecipeImportRequest) {
+    if (referencePending.current)
+      throw new Error("Wait for the current import to finish.");
+    const epoch = referenceEpoch.current;
+    const active = () => {
+      const latest = current.current;
+      const key = sharedId ? `shared:${sharedId}` : `local:${latest?.id}`;
+      if (
+        !latest ||
+        key !== request.projectKey ||
+        epoch !== referenceEpoch.current
+      )
+        throw new Error(
+          "The destination changed. Preview the result in the intended project again.",
+        );
+      if (!canEdit(access.current))
+        throw new Error("You no longer have permission to edit this project.");
+      if (compositionKey(latest) !== request.composition)
+        throw new Error(
+          "The composition changed since preview. Preview the recipe again before applying it.",
+        );
+      return latest;
+    };
+    // Revalidate before creating a version and again after the awaited save.
+    recipeToDocument(request.raw, active());
+    referencePending.current = true;
+    setReferenceBusy(true);
+    try {
+      await checkpoint();
+      const latest = active();
+      const next = recipeToDocument(request.raw, latest);
+      if (!commit(next))
+        throw new Error("The validated result could not be applied.");
+      setError("");
+      setSelected(null);
+      setNotice(
+        "Validated design imported. Your previous version is saved in History.",
+      );
+    } finally {
+      referencePending.current = false;
+      if (epoch === referenceEpoch.current) setReferenceBusy(false);
+    }
   }
   useEffect(() => {
     collaboration.current?.awareness(selected);
@@ -1018,6 +1089,18 @@ export default function Editor() {
                 onChange={(references) => patch({ references })}
                 onDirection={(direction) => patch({ direction })}
                 onAdd={addReference}
+                handoff={
+                  <>
+                    <ChangeInstructionFields
+                      value={doc.changeInstructions}
+                      readOnly={!editable}
+                      onChange={(changeInstructions) =>
+                        patch({ changeInstructions })
+                      }
+                    />
+                    <PromptHandoff document={doc} />
+                  </>
+                }
                 destination={
                   <ReferenceDestinationPicker
                     current={{
@@ -1186,34 +1269,14 @@ export default function Editor() {
           )}
           {tab === "assistant" && (
             <CreativeHandoff
+              key={handoffRequest}
+              initialMode={handoffRequest ? "import" : "brief"}
               document={doc}
+              projectKey={sharedId ? `shared:${sharedId}` : `local:${doc.id}`}
               readOnly={!editable}
               onChange={commit}
-              onImport={async (next) => {
-                try {
-                  await checkpoint();
-                  commit({
-                    ...current.current!,
-                    title: next.title,
-                    width: next.width,
-                    height: next.height,
-                    background: next.background,
-                    layers: next.layers,
-                  });
-                  setNotice(
-                    "Validated design imported. A previous version was saved.",
-                  );
-                  return true;
-                } catch (e) {
-                  setError(
-                    e instanceof Error
-                      ? e.message
-                      : "Could not save a version before importing.",
-                  );
-                  return false;
-                }
-              }}
-              onImage={() => fileInput.current?.click()}
+              onImport={applyReturnedRecipe}
+              onReference={addReference}
             />
           )}
           {tab === "team" && sharedId && (

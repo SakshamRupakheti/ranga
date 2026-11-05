@@ -78,9 +78,12 @@ bridge.subscribe((state) => {
   byId("copy-prompt").disabled = !state.prompt;
   byId("copy-query").disabled = !state.query;
   byId("retry-search").disabled = !state.query;
-  byId("context-note").textContent = state.projectKey
-    ? `${state.projectName}${state.editable ? "" : " · read-only"}`
-    : "No project context";
+  byId("context-note").textContent =
+    state.projectKey && !state.prompt
+      ? "Full prompt available in Ranga's Creative tools"
+      : state.projectKey
+        ? `${state.projectName}${state.editable ? "" : " · read-only"}`
+        : "No project context";
   byId("pane-ratio").value = Math.round(state.ratio * 100);
   byId("pane-ratio").disabled = !state.split;
   byId("swap").disabled = !state.split;

@@ -34,6 +34,12 @@ Account deletion removes owned projects and their assets/comments/versions throu
 
 ## Manual integrations
 
+Optional `changeInstructions` metadata records bounded preserve/replace/text/logo/colors/layout/originality fields in the existing schema-version-1 document, backups and shared metadata map. It is validated with the canonical document and subject to the same edit roles. Older backups remain readable; newer fields require the current app/service to be retained.
+
+BringIntoRanga classifies only user-provided clipboard, paste, drop or file data. Recipes use the existing strict importer; images, links and descriptions reuse ReferenceImport. Temporary previews are component-local and discarded on exit. Local recipe checkpoints now await the serialized IndexedDB save before commit. Shared imports await the existing version endpoint. Both paths recheck the active project, edit permission and a composition identity (ID/title/canvas/layers) after that await; intervening metadata changes are preserved by reparsing against the latest document. Failed checkpoints or stale composition never replace the canvas.
+
+The native Bring command emits a project-bound first-party navigation event and opens Design mode, with no clipboard read. For generated prompts above 150 KB, a nullable prompt sentinel clears the toolbar's previous prompt while preserving current project metadata; the first-party panel can explicitly copy the full prompt. External website privileges are unchanged.
+
 Pinterest and ChatGPT are normal external links with `noopener noreferrer`. No passwords, cookies, extension data, or third-party APIs are accessed. Reference URLs preserve attribution without fetching content. User-permitted image upload/clipboard import is explicit.
 
 The prompt builder deterministically serializes a design brief, selected reference descriptions, available image IDs, and the exact recipe schema. Recipe import treats generated data as untrusted, rejects unknown fields and arbitrary executable content, and maps supported entries into native editable layers. Applying preserves references and saves a preceding version. A flattened image stays a single raster layer.

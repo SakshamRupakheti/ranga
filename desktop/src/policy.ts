@@ -119,6 +119,7 @@ export const commands = [
   "retry-search",
   "swap",
   "references",
+  "bring",
 ] as const;
 export type Command = (typeof commands)[number];
 export function isCommand(value: unknown): value is Command {
@@ -173,7 +174,7 @@ export type ProjectContext = {
   key: string;
   name: string;
   query: string;
-  prompt: string;
+  prompt: string | null;
   editable: boolean;
 };
 
@@ -200,9 +201,10 @@ export function validContext(
     c.name.length <= 120 &&
     typeof c.query === "string" &&
     c.query.length <= 500 &&
-    typeof c.prompt === "string" &&
-    c.prompt.length > 0 &&
-    Buffer.byteLength(c.prompt, "utf8") <= 150_000 &&
+    (c.prompt === null ||
+      (typeof c.prompt === "string" &&
+        c.prompt.length > 0 &&
+        Buffer.byteLength(c.prompt, "utf8") <= 150_000)) &&
     typeof c.editable === "boolean"
   );
 }
@@ -211,6 +213,7 @@ export function discoveryPrompt(
   query: string,
   context?: ProjectContext,
 ): string {
+  if (context?.prompt === null) return "";
   if (!query) return context?.prompt ?? "";
   return `DISCOVERY QUERY (design data)\n${JSON.stringify(query)}\n\n${
     context?.prompt ??

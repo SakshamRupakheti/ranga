@@ -1,17 +1,44 @@
 # Verification record
 
+## Creative handoff milestone 3, 2026-11-05
+
+Built on `f47faa1` in `feature/ranga-creative-handoff`, stacked on the unmerged reference-tray branch and associated with [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1).
+
+| Check                                           | Result                                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------------------------ |
+| `npm run typecheck`                             | Passed on final source                                                         |
+| `npm run lint`                                  | Passed without errors or warnings on final source                              |
+| `npm test`                                      | 16 passed, including service authorization, restart and shared metadata checks |
+| `npm run build`                                 | Passed; Webpack production build and all routes generated                      |
+| `npm run test:e2e`                              | 24 passed in 3.0 minutes on isolated ports 3011/3013                           |
+| `npm run test:e2e -- tests/e2e/handoff.spec.ts` | 4 passed after the final clipboard-copy feedback adjustment                    |
+| `npm test --prefix desktop`                     | 9 passed                                                                       |
+| `npm run test:smoke --prefix desktop`           | 2 passed with real Electron views and controlled website fixtures              |
+
+The prompt includes saved change instructions and only selected reference metadata, without image bytes or private asset URLs. Browser tests check explicit copying/focus, stale copied feedback, denied-copy fallback, permitted generated-image downloads, persistence and read-only controls. New metadata round-trips through backups and Yjs; forged viewer/commenter mutations are rejected by the service.
+
+Bring into Ranga is checked with pasted/fenced/JSON-file recipes, written descriptions, source links and raster files. Empty, denied, HTML-only and oversized clipboard results produce actionable failures. The clipboard is not read on mount. Images require explicit permission and remain references. Cancelling a preview changes nothing. Late clipboard completion after leaving the panel and stale project-bound Bring events are discarded.
+
+Recipe checks inject a local checkpoint storage failure and confirm the original composition and preview remain available, then retry successfully and recover with Undo/Redo. A shared test delays the version request while another editor changes the composition; the import refuses to overwrite that edit and requires another preview. Existing references and instructions survive a valid replacement. Prior editor, collaboration, export and reference-tray checks pass.
+
+Electron checks cover the new Bring command, Design mode, current-project events, no-project fallback, forged remote/child commands, and a null prompt sentinel that disables native copying instead of leaving an older prompt active. No remote preload, clipboard-read permission or website scripting was added. Clipboard writes and browser opens use test fixtures, without touching the user's clipboard or external accounts.
+
+The [return-panel screenshot](screenshots/bring-into-ranga.png) was visually inspected at 1440 × 1000. It shows the real editor with a synthetic local design and a validated recipe preview. This is a browser UI inspection, not proof of authenticated ChatGPT/Pinterest compatibility or native cross-view drag support. The first browser run found two incorrect dropdown test selectors; using the combobox's accessible role fixed them. Recovery now clears a stale save error, and a new copy attempt clears the prior copied message before reporting success or failure.
+
+Milestone 4 remains the integrated raster canvas handoff and visual composition preview; Milestone 5 covers broader workflow/device polish. No API setup, main merge or public deployment was performed. Hosted CI is separate from these local results and must be verified on GitHub.
+
 ## Reference tray milestone 2, 2026-11-04
 
 Built on `9d24882` in `feature/ranga-reference-tray`, stacked on the unmerged Discover branch and associated with [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1).
 
-| Check | Result |
-| --- | --- |
-| `npm run typecheck` | Passed |
-| `npm run lint` | Passed without errors or warnings |
-| `npm test` | 13 passed, including authenticated service and CRDT checks |
-| `npm run build` | Passed; final Webpack production build and all routes generated |
-| `npm run test:e2e` | 20 passed in 2.6 minutes on isolated ports 3011/3013 |
-| `npm test --prefix desktop` | 9 passed |
+| Check                                 | Result                                                           |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| `npm run typecheck`                   | Passed                                                           |
+| `npm run lint`                        | Passed without errors or warnings                                |
+| `npm test`                            | 13 passed, including authenticated service and CRDT checks       |
+| `npm run build`                       | Passed; final Webpack production build and all routes generated  |
+| `npm run test:e2e`                    | 20 passed in 2.6 minutes on isolated ports 3011/3013             |
+| `npm test --prefix desktop`           | 9 passed                                                         |
 | `npm run test:smoke --prefix desktop` | 2 passed with actual Electron views and labeled website fixtures |
 
 Browser coverage checks URL/text/file/paste previews, cancellation, explicit image permission, generated classification, attribution without URL fetching, rejection of HTML-only transfers and mismatched/SVG/oversized/over-dimension images, denied/unsupported clipboard reads, ordering/selection/removal, the 12-reference limit, backup persistence and project destination switching. The compact board keeps a single hidden canvas mounted; saved thumbnails retain actual drawing content. Pending previews clear on layout/project changes. Switching after a fresh direction edit saves that edit without an unnecessary unload prompt.

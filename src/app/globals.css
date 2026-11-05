@@ -2770,3 +2770,41 @@ kbd {
 .reference-board-compact .reference-direction textarea {
   min-height: 110px;
 }
+.change-instructions h3,
+.bring-into-ranga h3 {
+  font-size: 12px;
+  margin: 18px 0 12px;
+}
+.change-instructions summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 8px 0;
+}
+.selected-reference-names {
+  margin: 10px 0 14px;
+  padding-left: 16px;
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.prompt-handoff {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+.prompt-handoff .button {
+  white-space: normal;
+  text-align: left;
+  line-height: 1.4;
+}
+.bring-into-ranga fieldset {
+  min-width: 0;
+}
+.reference-board-compact .change-instructions textarea {
+  min-height: 65px;
+}
+.bring-into-ranga .two-buttons {
+  flex-wrap: wrap;
+}

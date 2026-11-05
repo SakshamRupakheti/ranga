@@ -404,9 +404,11 @@ function search(value: unknown, key: unknown) {
       });
     setMode("discover");
     message =
-      context && !context.editable
-        ? "Prompt ready. Read-only project: this query stays in this session. Paste and send in ChatGPT yourself."
-        : "Prompt ready. Copy it when you choose, then paste and send in ChatGPT. Sign in if either site asks.";
+      context?.prompt === null
+        ? "This project's prompt is too large for the toolbar. Copy the full instructions from Ranga's Creative tools or References."
+        : context && !context.editable
+          ? "Prompt ready. Read-only project: this query stays in this session. Paste and send in ChatGPT yourself."
+          : "Prompt ready. Copy it when you choose, then paste and send in ChatGPT. Sign in if either site asks.";
   } catch (error) {
     message =
       error instanceof Error ? error.message : "Search could not start.";
@@ -547,6 +549,23 @@ function runCommand(command: Command) {
           focused === "ranga" ? localUrl : undefined,
         ),
       );
+      break;
+    case "bring":
+      if (context) {
+        setMode("design");
+        views
+          .get("ranga")
+          ?.webContents.send("ranga:discovery", {
+            type: "bring",
+            key: context.key,
+          });
+        message = context.editable
+          ? "Paste or choose a result in Ranga, then review its preview."
+          : "This project is read-only. Choose an editable project to import a result.";
+      } else {
+        setMode("focus");
+        message = "Open a Ranga project before bringing in a result.";
+      }
       break;
     case "open-link": {
       const url = pendingLink;

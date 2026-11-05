@@ -12,6 +12,7 @@ const metaKeys = [
   "createdAt",
   "updatedAt",
   "brief",
+  "changeInstructions",
   "discoveryQuery",
 ] as const;
 function equal(a: unknown, b: unknown) {

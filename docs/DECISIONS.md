@@ -55,3 +55,15 @@ Only ordinary browser-provided drop/paste/file data enters a preview. Do not ins
 Choose a destination before import and save before switching; temporary previews are discarded. Recheck access and destination after uploads and append to the latest shared document. An uploaded file can remain unused if a subsequent role change or capacity check prevents attachment; existing asset garbage collection remains a separately tracked storage task.
 
 Work is on `feature/ranga-reference-tray`, stacked on the unmerged discovery branch for review. No main merge or public deployment is included.
+
+## 011: Explicit return previews and recoverable recipe application
+
+Accepted 2026-11-05 for Milestone 3. Store structured change instructions in the current document and Yjs metadata, and compose them into the existing deterministic prompt with selected reference metadata. Provide permitted owned/generated reference downloads for manual attachment. Never capture a ChatGPT conversation, submit a prompt or automate attachments.
+
+Bring into Ranga opens a first-party, project-bound panel. Only a visible Read clipboard action calls the browser clipboard API; normal paste/drop/file entry remains available when access is denied. JSON/fenced JSON and JSON files must validate as recipes, never silently become notes. Supported images reuse the existing image checks and permission confirmation. Plain text and attributed links remain references without remote fetching.
+
+Before replacing a composition, persist a checkpoint through the existing local/shared path and recheck destination, edit permission and composition identity after the await. Reparse against the latest document to retain intervening metadata edits. A changed canvas requires a fresh preview. Save/validation failures preserve the current canvas and preview. Undo and saved History remain the recovery paths; no second canvas, project database or undo stack is introduced.
+
+A `null` prompt sentinel deliberately invalidates native prompt copying above the 150 KB IPC bound instead of leaving stale instructions available. The full prompt remains copyable in the first-party panel. The desktop command and preload remain a closed vocabulary with no external scripting or clipboard-read privilege.
+
+Work is on `feature/ranga-creative-handoff`, stacked on the unmerged reference-tray branch. Integrated raster canvas handoff and visual recipe rendering remain Milestone 4. No main merge or public deployment is included.

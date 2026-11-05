@@ -2,36 +2,32 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Upload, ClipboardPaste } from "lucide-react";
-import { readImage } from "@/lib/files";
-import { sourceUrlSchema } from "@/lib/document";
 import {
-  referenceText,
+  prepareReference,
+  type ReferencePreview,
   transferText,
   validateReferenceImport,
   type Reference,
 } from "@/lib/reference-import";
 
-type Preview = {
-  src?: string;
-  width?: number;
-  height?: number;
-  bytes?: number;
-  name: string;
-  sourceUrl: string;
-  note: string;
-  kind: NonNullable<Reference["kind"]>;
-};
+type Preview = ReferencePreview;
 export function ReferenceImport({
   projectKey,
   readOnly,
   onAdd,
+  initialPreview,
+  onCancel,
 }: {
   projectKey: string;
   readOnly: boolean;
   onAdd: (reference: Reference, projectKey: string) => Promise<void>;
+  initialPreview?: Preview;
+  onCancel?: () => void;
 }) {
   const [raw, setRaw] = useState("");
-  const [preview, setPreview] = useState<Preview | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(
+    initialPreview ?? null,
+  );
   const [permission, setPermission] = useState(false);
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState("Checking image…");
@@ -71,29 +67,7 @@ export function ReferenceImport({
     setBusy(true);
     setPhase("Checking image…");
     try {
-      let next: Preview;
-      if (file) {
-        const image = await readImage(file);
-        const source = sourceUrlSchema.safeParse(text.trim());
-        next = {
-          ...image,
-          bytes: file.size,
-          name: file.name.slice(0, 120) || "Pasted image",
-          sourceUrl: source.success ? source.data : "",
-          note: "",
-          kind: "inspiration",
-        };
-      } else {
-        const parsed = referenceText(text);
-        next = {
-          name: parsed.sourceUrl
-            ? new URL(parsed.sourceUrl).hostname
-            : "Written reference",
-          sourceUrl: parsed.sourceUrl ?? "",
-          note: parsed.note ?? "",
-          kind: "inspiration",
-        };
-      }
+      const next = await prepareReference(file, text);
       if (sequence.current === version) {
         setPreview(next);
         setMessage("Reference ready to review. Nothing has been added yet.");
@@ -344,7 +318,10 @@ export function ReferenceImport({
             >
               Add reference
             </button>
-            <button className="button button-outline" onClick={reset}>
+            <button
+              className="button button-outline"
+              onClick={onCancel ?? reset}
+            >
               Cancel preview
             </button>
           </div>
