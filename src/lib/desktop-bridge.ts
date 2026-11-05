@@ -1,10 +1,9 @@
 // No bridge is required for the web app. Electron installs this narrow surface
 // on its first-party Ranga view; remote panes never receive it.
-export type DiscoveryEvent = {
-  type: "query" | "references";
-  key: string;
-  query?: string;
-};
+export type DiscoveryEvent =
+  | { type: "query"; key: string; query: string }
+  | { type: "references"; key: string }
+  | { type: "layout"; key: string; referenceOnly: boolean };
 declare global {
   interface Window {
     rangaBridge?: {

@@ -1,6 +1,6 @@
 # Ranga Workspace desktop preview
 
-An optional Electron desktop window for Ranga, ChatGPT, and Pinterest, now with the first **Ranga Discover** milestone. Search once to open Pinterest search and prepare a local ChatGPT prompt. No third-party API keys are required. This is an experimental source-run desktop shell, not a packaged browser release.
+An optional Electron desktop window for Ranga, ChatGPT, and Pinterest, with **Ranga Discover** search and a project reference tray. Search once to open Pinterest search and prepare a local ChatGPT prompt. No third-party API keys are required. This is an experimental source-run desktop shell, not a packaged browser release.
 
 ## Start
 
@@ -32,7 +32,7 @@ Sign into ChatGPT and Pinterest yourself in their panes. Sessions persist separa
 1. Open a Ranga project, then enter a design query in the desktop search bar. **Search** sends only the query to Pinterest and displays Pinterest beside ChatGPT. It does not send a ChatGPT message. Queries accept up to 500 characters, normalize whitespace, and reject hidden control characters.
 2. Use **Prompt** to review the locally prepared instructions. An open project adds its brief, selected reference descriptions, dimensions, available image IDs and existing recipe schema. Without a project, you get a general design-discussion prompt.
 3. Choose **Copy & ChatGPT**, then paste and submit yourself. **Copy instructions & open ChatGPT** in the editor's Creative tools panel also copies and focuses the desktop pane. Attach permitted images manually.
-4. Use **References** to return to the active project's existing reference board. Add attributed source links or images you have permission to use. This shortcut expands Ranga; a reference tray alongside both discovery panes is a later milestone.
+4. In Discover, choose **References** to open the active project's board below both website panes. The same editor becomes the tray; **Design** or **Focus** restores its canvas. The tray and Prompt drawer open one at a time. In Design/Focus, References opens the editor's normal board.
 5. Paste a returned JSON recipe into the existing **Creative tools → Import result** validator, review it and apply. Download permitted raster results yourself, then upload them in Ranga. Use the reference board's paste area with Ctrl/Cmd+V for clipboard images. The separate clipboard-read button remains denied in desktop.
 
 Editable projects save the latest discovery query through the normal document history, autosave and shared synchronization. **Creative tools → Discovery query** also lets you edit it on the web. Viewers/commenters can search but their new query stays only in the desktop session; they cannot change saved project metadata. Queries without an open project also stay in memory. Opening another project restores that project's query. Prompts are not stored separately, and Ranga does not capture ChatGPT conversations.
@@ -52,6 +52,16 @@ There is no automatic account connection, scraping, prompt submission, image dow
 - **Open in browser**: open that site's home page externally. Other HTTPS destinations show an explicit **Open link** choice in the toolbar.
 - **Help**: startup commands, project migration, and manual handoff instructions.
 
+## Collect references
+
+Choose the **Destination project** before preparing an import. The selector lists local projects in this desktop profile and shared projects available to your Ranga account. Current work must finish saving before a switch. Switching projects clears any unconfirmed preview; it does not move references between projects. Read-only projects cannot receive imports.
+
+Drop browser-provided PNG/JPEG/WebP files, plain text or a source link into the focused area, paste with Ctrl/Cmd+V, choose **Image**, or enter a written reference. Every entry has a preview and **Add reference** confirmation. Image files additionally require permission confirmation. Choose Inspiration, Owned/licensed, or Generated, and add attribution and notes. Generated images remain raster images; adding to the reference board does not insert a canvas layer.
+
+Image files keep the existing 5 MB, 24-megapixel and 10,000-pixel-side limits. MIME and file signatures must match. HTTP/HTTPS source links without credentials are saved as links, including links ending in image extensions. Ranga never downloads the linked image or parses dragged HTML. Up to 12 references use the existing selection, compare, collections, reordering, removal and creative-direction controls. The tray displays the real project save/sync state.
+
+Cross-view drag data depends on Chromium and the source website. When no supported data arrives, use paste, a local file, or an attributed source URL. This does not guarantee arbitrary Pinterest image dragging. Programmatic clipboard reads remain denied in desktop; the Clipboard button explains the keyboard/file fallback. Temporary previews clear when leaving the board or changing between the tray and full editor.
+
 ## Configuration and privacy
 
 Optional environment variables:
@@ -66,7 +76,7 @@ Browser storage, site cookies, and local Ranga projects persist in the desktop p
 
 Website panes use separate persistent sessions and sandboxed `WebContentsView` instances. Node integration is disabled everywhere. ChatGPT, Pinterest, and all popups have no preload. The local toolbar has a narrow IPC bridge for fixed commands, bounded search inputs and explicit clipboard writes. Only the configured first-party Ranga view receives a separate minimal bridge for project context, query/reference events, and ChatGPT focus. Main validates sender, frame, origin, editor route, project key and payload bounds (including a 150 KB prompt limit). It cannot script external pages, read clipboard content, access cookies or open arbitrary files/URLs.
 
-Navigation remains restricted to the selected site and explicitly listed sign-in hosts; system-browser handoff rejects executable/custom protocols. The toolbar shows the current origin without URL queries or fragments. Web security, certificate validation, and website headers remain enabled. Downloads prompt for a destination and are never auto-opened. Microphone, camera, location, devices, notifications, and programmatic clipboard reads are denied in this preview. The unified clipboard/import tray is not part of this milestone.
+Navigation remains restricted to the selected site and explicitly listed sign-in hosts; system-browser handoff rejects executable/custom protocols. The toolbar shows the current origin without URL queries or fragments. Web security, certificate validation, and website headers remain enabled. Downloads prompt for a destination and are never auto-opened. Microphone, camera, location, devices, notifications, and programmatic clipboard reads are denied in this preview. Dragging an unhandled file/link cannot navigate a pane. Imports use ordinary first-party browser events and the existing project permissions, without file or clipboard access in IPC.
 
 ## Verify and contribute
 

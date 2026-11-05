@@ -1,5 +1,31 @@
 # Verification record
 
+## Reference tray milestone 2, 2026-11-04
+
+Built on `9d24882` in `feature/ranga-reference-tray`, stacked on the unmerged Discover branch and associated with [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1).
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | Passed |
+| `npm run lint` | Passed without errors or warnings |
+| `npm test` | 13 passed, including authenticated service and CRDT checks |
+| `npm run build` | Passed; final Webpack production build and all routes generated |
+| `npm run test:e2e` | 20 passed in 2.6 minutes on isolated ports 3011/3013 |
+| `npm test --prefix desktop` | 9 passed |
+| `npm run test:smoke --prefix desktop` | 2 passed with actual Electron views and labeled website fixtures |
+
+Browser coverage checks URL/text/file/paste previews, cancellation, explicit image permission, generated classification, attribution without URL fetching, rejection of HTML-only transfers and mismatched/SVG/oversized/over-dimension images, denied/unsupported clipboard reads, ordering/selection/removal, the 12-reference limit, backup persistence and project destination switching. The compact board keeps a single hidden canvas mounted; saved thumbnails retain actual drawing content. Pending previews clear on layout/project changes. Switching after a fresh direction edit saves that edit without an unnecessary unload prompt.
+
+The collaboration flow pauses an image upload while another editor adds a written reference, then confirms both survive in the final collection and export. Viewer/commenter controls remain disabled; direct unauthorized asset uploads and reference mutations are rejected by the service. Existing recipes, exports, comments, live editing, reconnect/restart recovery and local project workflows pass.
+
+Electron coverage adds the three visible views, bottom-tray geometry at minimum and large window sizes, reuse of the original first-party WebContents, project-bound layout events and mutual exclusion with the prompt drawer. Existing sender/frame provenance, website isolation, navigation, clipboard and fallback checks pass.
+
+A separate production preview on port 3015 used an isolated profile and a synthetic local project. Its native window was visually inspected; [the screenshot](screenshots/reference-tray-desktop.png) shows the actual board beneath clearly labeled external fixtures. The renderer reported no errors. A native pointer drag of a fixture link between WebContentsViews did **not** create a preview. This attempt does not establish general cross-view support or live Pinterest compatibility. Automated drop/paste tests provide permitted browser data directly; paste, file selection and attributed-link entry remain the supported fallbacks. No provider accounts, cookies, conversations or artwork were read. The preview process/profile were cleaned up.
+
+Verification fixed an existing URL refinement that threw for blank/invalid URLs, which blocked image previews with optional attribution. The unload check now uses the acknowledged snapshot rather than stale rendered status when switching projects. Test locators were corrected for the framework's extra alert region and a labeled select. One development run was interrupted by an editor hot reload before a new project's first save; the final run held the source unchanged and passed all 20 tests. Sandbox restrictions initially blocked runtime/build checks, and a temporary approval-review usage limit interrupted one build rerun; after review became available, the final build and runtime checks completed. Hosted CI is a separate result and is not implied by these local passes.
+
+Milestones 3–5 remain: fuller change instructions, explicit return/import into Ranga, integrated canvas handoff and workflow polish. No merge to main or public deployment was performed.
+
 ## Discover milestone 1, 2026-11-04
 
 Built on `c798c21` in `feature/ranga-discover`, associated with [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1). This section records the new milestone; the earlier baseline below is retained as history.

@@ -14,12 +14,16 @@ export const sourceUrlSchema = z
   .max(2000)
   .url()
   .refine((value) => {
-    const url = new URL(value);
-    return (
-      ["http:", "https:"].includes(url.protocol) &&
-      !url.username &&
-      !url.password
-    );
+    try {
+      const url = new URL(value);
+      return (
+        ["http:", "https:"].includes(url.protocol) &&
+        !url.username &&
+        !url.password
+      );
+    } catch {
+      return false;
+    }
   }, "Use an http or https source link.");
 export const referenceSchema = z
   .object({
@@ -30,9 +34,14 @@ export const referenceSchema = z
     note: z.string().max(2000).optional(),
     collection: z.string().max(80).optional(),
     selected: z.boolean(),
-    kind: z.enum(["inspiration", "owned"]).optional(),
+    kind: z.enum(["inspiration", "owned", "generated"]).optional(),
+    permissionConfirmed: z.literal(true).optional(),
+    addedAt: z.string().datetime().optional(),
   })
-  .refine((r) => !!r.src || !!r.sourceUrl, "Add an image or source link.");
+  .refine(
+    (r) => !!r.src || !!r.sourceUrl || !!r.note?.trim(),
+    "Add an image, source link, or written description.",
+  );
 export const briefSchema = z.object({
   graphicType: z.string().max(100),
   headline: z.string().max(500),

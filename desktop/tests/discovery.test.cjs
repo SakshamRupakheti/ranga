@@ -25,7 +25,9 @@ test(
         document.querySelector('#publish').onclick = () => window.rangaBridge.context(ctx);
         document.querySelector('#readonly').onclick = () => window.rangaBridge.context({...ctx, editable: false});
         window.receivedQueries = [];
+        window.referenceLayout = null;
         window.rangaBridge?.subscribe(event => {
+          if (event.type === 'layout') window.referenceLayout = event;
           if (event.type === 'query') { window.receivedQueries.push(event.query); ctx.query = event.query; window.rangaBridge.context(ctx); }
         });
       </script>`);
@@ -143,10 +145,82 @@ test(
         (await visible()).map((v) => new URL(v.url).hostname),
         ["www.pinterest.com", "chatgpt.com"],
       );
+      // The existing first-party view becomes a tray; neither website reloads
+      // and no extra WebContents, project store or remote bridge is created.
+      const originalRanga = await desktop.evaluate(
+        ({ webContents }) =>
+          webContents
+            .getAllWebContents()
+            .find((w) => w.getURL().includes("/editor?id=fixture")).id,
+      );
+      await toolbar.locator("#references").click();
+      await expect(toolbar.locator("#references")).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
+      await expect.poll(async () => (await visible()).length).toBe(3);
+      await expect
+        .poll(() => ranga.evaluate(() => window.referenceLayout))
+        .toEqual({ type: "layout", key: "local:fixture", referenceOnly: true });
+      for (const size of [
+        [960, 650],
+        [1440, 900],
+      ]) {
+        await desktop.evaluate(
+          ({ BrowserWindow }, size) =>
+            BrowserWindow.getAllWindows()
+              .find((w) => w.webContents.getURL().startsWith("file:"))
+              .setContentSize(...size),
+          size,
+        );
+        await expect
+          .poll(async () => {
+            const panes = await visible();
+            const tray = panes.find((v) => v.url.startsWith(localUrl));
+            return (
+              panes
+                .filter((v) => v !== tray)
+                .every(
+                  (v) => v.bounds.y + v.bounds.height + 2 === tray.bounds.y,
+                ) && tray.bounds.width >= 950
+            );
+          })
+          .toBe(true);
+      }
+      await toolbar
+        .getByRole("button", { name: "Design", exact: true })
+        .click();
+      await expect
+        .poll(() => ranga.evaluate(() => window.referenceLayout?.referenceOnly))
+        .toBe(false);
+      assert.equal((await visible()).length, 2);
+      await toolbar
+        .getByRole("button", { name: "Discover", exact: true })
+        .click();
+      await expect
+        .poll(() => ranga.evaluate(() => window.referenceLayout?.referenceOnly))
+        .toBe(true);
+      assert.equal(
+        await desktop.evaluate(
+          ({ webContents }) =>
+            webContents
+              .getAllWebContents()
+              .find((w) => w.getURL().includes("/editor?id=fixture")).id,
+        ),
+        originalRanga,
+      );
       await toolbar
         .getByRole("button", { name: "Prompt", exact: true })
         .click();
       await expect(toolbar.locator("#prompt-panel")).toBeVisible();
+      await expect(toolbar.locator("#references")).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
+      await expect
+        .poll(() => ranga.evaluate(() => window.referenceLayout?.referenceOnly))
+        .toBe(false);
+      assert.equal((await visible()).length, 2);
       await expect(toolbar.locator("#prompt")).toHaveValue(/1080 × 1350/);
       await toolbar.getByLabel("Left pane width").fill("65");
       await expect

@@ -45,3 +45,13 @@ Store the project query as optional bounded document metadata through existing I
 Pinterest's website search route was checked on 2026-11-04: it populated the search field, then showed a login gate. This is observed website behavior, not a stable API or proof of authenticated results. Use encoded query parameters, retain a one-attempt home fallback, and provide manual query copying/retry. ChatGPT receives no query parameters or automatic message. Keep source-only first-party clipboard writes behind explicit buttons; clipboard reading and the unified transfer tray remain later milestones.
 
 The work stays on `feature/ranga-discover` for review. No main merge or public deployment is part of this milestone.
+
+## 010: One editor owns discovery references
+
+Accepted 2026-11-04 for Milestone 2. Reposition the existing Ranga view as a collapsible bottom tray in Discover, preserving two website columns at the 960-pixel minimum width. Reuse ReferenceBoard, the document schema, IndexedDB/Yjs, the asset endpoint and server roles. Keep the canvas mounted while hidden so its history and thumbnail renderer retain one owner. Independent scroll areas serve import, reference cards and creative direction; Focus remains available for more space.
+
+Only ordinary browser-provided drop/paste/file data enters a preview. Do not inspect third-party DOM, parse transferred HTML, fetch source URLs or open clipboard-read privileges. Source-only and written-only references are valid. Every new image requires explicit permission confirmation, including inspiration and generated assets. Classification records intended use; it is not a proof of ownership. Existing files without this metadata remain readable. New reference variants require the current app/service even though the document schema remains version 1.
+
+Choose a destination before import and save before switching; temporary previews are discarded. Recheck access and destination after uploads and append to the latest shared document. An uploaded file can remain unused if a subsequent role change or capacity check prevents attachment; existing asset garbage collection remains a separately tracked storage task.
+
+Work is on `feature/ranga-reference-tray`, stacked on the unmerged discovery branch for review. No main merge or public deployment is included.

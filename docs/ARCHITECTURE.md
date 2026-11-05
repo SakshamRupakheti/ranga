@@ -55,6 +55,16 @@ Each site retains its own persistent session. The existing loopback web app and 
 - [Better Auth installation](https://www.better-auth.com/docs/installation), [SQLite adapter](https://www.better-auth.com/docs/adapters/sqlite), and installed package exports/type declarations.
 - [Yjs shared types](https://docs.yjs.dev/api/shared-types) and [UndoManager](https://docs.yjs.dev/api/undo-manager).
 
+## Unified reference tray
+
+In Discover, References moves the existing Ranga WebContentsView below Pinterest and ChatGPT. The tray uses at most half the available height, capped at 380 pixels, with a two-pixel separator. Prompt and references are mutually exclusive. A project-bound `layout` event enables the editor's compact board layout. The same React editor, Fabric canvas, history, collaboration client and document stay mounted; hiding the canvas preserves thumbnail rendering. Design/Focus restores the full editor without copying state or creating another WebContentsView.
+
+`ReferenceImport` previews one browser-provided file, plain-text description or HTTP/HTTPS source link. It reads neither source-page DOM nor drag HTML and never fetches a source URL. Raster imports validate MIME, signature, decode, dimensions and existing size limits, then require explicit permission confirmation. Optional `permissionConfirmed` and `addedAt` metadata, a `generated` classification and written-only references extend the existing reference schema. Old documents remain readable; documents using the new variants require an updated client/service. No schema migration or new reference database is introduced.
+
+The editor checks destination identity, lifetime, edit role and the 12-reference limit before an import and again after a shared asset upload. It appends to the latest document so edits received during upload survive. Shared assets and updates use existing authenticated HTTP/Yjs paths and server checks. Local imports use existing history/autosave. The destination picker reads current local/shared project lists and saves before a full first-party navigation; it discards temporary previews rather than carrying a payload to an unreviewed destination.
+
+Native drag navigation is disabled. Supported data must arrive through Chromium's normal first-party drop/paste events. Electron provides no privileged image-transfer, remote-script or clipboard-read IPC. Cross-view and authenticated provider behavior remain conditional. See [Electron WebContentsView](https://www.electronjs.org/docs/latest/api/web-contents-view) and [the browser drag data store](https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Drag_data_store).
+
 ## Explicit limitations
 
 The current host is single-process and loopback-only. No public remote team access, email delivery, hosted database, managed storage, production backup schedule, legal policy, domain, external AI integration, or automated social-platform connection is implemented. Browser-only projects do not use the shared CRDT and can still conflict if edited in multiple tabs. Full accessibility, Firefox/Safari, real devices, persistent grouping/artboards, and realistic high-load benchmarking remain open.

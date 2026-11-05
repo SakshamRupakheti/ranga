@@ -2038,6 +2038,41 @@ kbd {
   color: var(--muted);
   margin: 12px 0;
 }
+.reference-import fieldset {
+  min-width: 0;
+}
+.reference-preview-image {
+  display: block;
+  width: 100%;
+  height: 130px;
+  object-fit: contain;
+  background: var(--soft);
+}
+.reference-drop-zone {
+  border: 1px dashed var(--muted);
+  margin: 12px 0;
+  cursor: default;
+}
+.reference-drop-zone:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.reference-permission {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 12px 0;
+}
+.reference-permission input {
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+.reference-destination select {
+  width: 100%;
+  min-width: 0;
+}
 .reference-filters {
   display: flex;
   flex-wrap: wrap;
@@ -2648,4 +2683,90 @@ kbd {
   .editor-subbar .canvas-dimensions {
     display: none;
   }
+}
+/* The desktop tray presents the existing editor's board. Keep the canvas
+   mounted so document history, rendering and thumbnails retain one owner. */
+.editor.reference-only {
+  display: block;
+}
+.editor.reference-only > .editor-top,
+.editor.reference-only > .editor-subbar,
+.editor.reference-only > .editor-center,
+.editor.reference-only > .editor-right {
+  display: none;
+}
+.editor.reference-only .editor-left {
+  display: flex;
+  position: static;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  border: 0;
+  box-shadow: none;
+}
+.reference-only .tool-tabs,
+.reference-only .panel-foot {
+  display: none;
+}
+.reference-only .left-panel-content {
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.reference-save-state {
+  color: var(--muted);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+.reference-save-state .error-banner {
+  margin: 6px 0;
+}
+.reference-board-compact {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.reference-board-compact .panel-heading {
+  margin: 6px 0 10px;
+}
+.reference-board-compact .reference-board-columns {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(300px, 1.6fr) minmax(
+      180px,
+      0.7fr
+    );
+  gap: 20px;
+  min-height: 0;
+  flex: 1;
+}
+.reference-board-compact .reference-board-columns > div {
+  overflow: auto;
+  min-width: 0;
+  padding: 0 4px 12px 0;
+}
+.reference-board-compact .reference-compose,
+.reference-board-compact .reference-library {
+  border-right: 1px solid var(--line);
+  padding-right: 16px !important;
+}
+.reference-board-compact .reference-filters {
+  margin: 0 0 12px;
+  align-items: center;
+}
+.reference-board-compact .reference-filters select {
+  width: auto;
+  max-width: 65%;
+}
+.reference-board-compact .moodboard {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  align-items: start;
+}
+.reference-board-compact .field:first-child {
+  margin-top: 0;
+}
+.reference-board-compact .reference-direction textarea {
+  min-height: 110px;
 }

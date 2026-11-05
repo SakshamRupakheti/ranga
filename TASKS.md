@@ -30,10 +30,10 @@ Updated 2026-11-04. Preserve the existing Ranga editor. Revised direction: nativ
 - [x] Milestone 1: bounded unified search; encoded Pinterest website navigation; local project-aware ChatGPT prompt; Discover/Design/Focus modes; prompt review and copy/focus; explicit sign-in help, retry, manual-search and browser fallbacks.
 - [x] Project query persistence through existing IndexedDB/Yjs paths, with role checks, stale-project rejection, and narrow first-party IPC. No third-party pane receives a preload.
 - [x] Adjustable split proportions, swapping, focus expansion, original navigation/shortcuts, reference-board shortcut, and compact 132-pixel toolbar.
-- [ ] Milestone 2: unified reference tray with supported drop/paste/file previews, attribution and rights confirmation, reusing the existing reference board.
+- [x] Milestone 2: collapsible Discover reference tray with provided drop/paste/file previews, source links and written references, attribution, image permission confirmation, classification, destination selection and real save/sync feedback, reusing the existing reference board and permissions.
 - [ ] Milestone 3: fuller reference change instructions and explicit clipboard return through Bring into Ranga.
 - [ ] Milestone 4: unified image/recipe preview, checkpoint, canvas handoff and recovery through existing authorized paths. Existing recipe import already supports validation and checkpoints.
-- [ ] Milestone 5: end-to-end tray polish, accessibility/device testing and expanded failure coverage. Native cross-view drag/drop remains to be investigated; no arbitrary Pinterest image transfer is claimed.
+- [ ] Milestone 5: end-to-end tray polish, accessibility/device testing and expanded failure coverage. A Windows native cross-view link-drag attempt did not reach the preview; browser-provided transfer data and paste/file/link fallbacks are tested. No arbitrary Pinterest image transfer is claimed.
 
 ## Partially complete or environment-dependent
 

@@ -77,6 +77,11 @@ export function originLabel(value: string): string {
 }
 
 export type Bounds = { x: number; y: number; width: number; height: number };
+export function referenceTrayBounds(width: number, height: number): Bounds {
+  const available = Math.max(0, height - TOOLBAR_HEIGHT);
+  const trayHeight = Math.min(380, Math.floor(available / 2));
+  return { x: 0, y: height - trayHeight, width, height: trayHeight };
+}
 export function paneBounds(
   width: number,
   height: number,
@@ -137,6 +142,7 @@ export type WorkspaceState = {
   editable: boolean;
   prompt: string;
   promptOpen: boolean;
+  referenceTrayOpen: boolean;
   ratio: number;
   pages: Record<Site, string>;
 };
