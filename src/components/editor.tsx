@@ -62,6 +62,14 @@ import { ThemeToggle } from "./theme-toggle";
 import { TeamPanel } from "./team-panel";
 import { CreativeHandoff } from "./creative-handoff";
 import { ReferenceBoard } from "./reference-board";
+import {
+  ReferenceDestinationPicker,
+  type ReferenceDestination,
+} from "./reference-destination";
+import {
+  validateReferenceImport,
+  type Reference,
+} from "@/lib/reference-import";
 import { buildPrompt } from "@/lib/design-recipe";
 import "@/lib/desktop-bridge";
 type Tab =
@@ -100,6 +108,10 @@ export default function Editor() {
   const [exportOpen, setExportOpen] = useState(false);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const [referenceOnly, setReferenceOnly] = useState(false);
+  const [referenceBusy, setReferenceBusy] = useState(false);
+  const referencePending = useRef(false);
+  const referenceEpoch = useRef(0);
   const [historyState, setHistoryState] = useState({
     canUndo: false,
     canRedo: false,
@@ -112,6 +124,10 @@ export default function Editor() {
   const current = useRef<DesignDocument | null>(null);
   const currentVersions = useRef<SavedProject["versions"]>([]);
   const saveChain = useRef<Promise<void>>(Promise.resolve());
+  const savedSnapshot = useRef<{
+    document: DesignDocument;
+    versions: SavedProject["versions"];
+  } | null>(null);
   const [opening] = useState(() => ({
     id: query.get("id"),
     template: query.get("new"),
@@ -119,6 +135,7 @@ export default function Editor() {
   }));
   useEffect(() => {
     let disposed = false;
+    const epoch = ++referenceEpoch.current;
     async function open() {
       await Promise.resolve();
       if (disposed) return;
@@ -197,6 +214,7 @@ export default function Editor() {
     void open();
     return () => {
       disposed = true;
+      referenceEpoch.current = epoch + 1;
       collaboration.current?.destroy();
       collaboration.current = null;
     };
@@ -263,6 +281,15 @@ export default function Editor() {
       if (event.type === "references") {
         setTab("references");
         setLeftOpen(true);
+      } else if (
+        event.type === "layout" &&
+        typeof event.referenceOnly === "boolean"
+      ) {
+        setReferenceOnly(event.referenceOnly);
+        if (event.referenceOnly) {
+          setTab("references");
+          setLeftOpen(true);
+        }
       } else if (event.type === "query" && canEdit(access.current)) {
         const parsed = discoveryQuerySchema.safeParse(event.query);
         if (parsed.success) commit({ ...latest, discoveryQuery: parsed.data });
@@ -284,6 +311,7 @@ export default function Editor() {
       return false;
     }
     setStatus("Saving…");
+    const savedVersions = currentVersions.current;
     const payload: SavedProject = {
       document: structuredClone(latest),
       thumbnail: canvas.current?.thumbnail() ?? "",
@@ -294,6 +322,7 @@ export default function Editor() {
       .then(() => saveProject(payload));
     try {
       await saveChain.current;
+      savedSnapshot.current = { document: latest, versions: savedVersions };
       if (current.current?.updatedAt === latest.updatedAt)
         setStatus("Saved on this device");
       return true;
@@ -305,6 +334,70 @@ export default function Editor() {
       return false;
     }
   }, []);
+  async function addReference(reference: Reference, expectedKey: string) {
+    if (referencePending.current)
+      throw new Error("Wait for the current reference action to finish.");
+    const epoch = referenceEpoch.current;
+    function activeProject() {
+      const latest = current.current;
+      const key = sharedId ? `shared:${sharedId}` : `local:${latest?.id}`;
+      if (!latest || epoch !== referenceEpoch.current || key !== expectedKey)
+        throw new Error(
+          "The destination changed. Preview the reference in the intended project again.",
+        );
+      if (!canEdit(access.current))
+        throw new Error("You no longer have permission to edit this project.");
+      if (latest.references.length >= 12)
+        throw new Error("Keep up to 12 references per project.");
+      return latest;
+    }
+    let valid = validateReferenceImport(reference);
+    activeProject();
+    referencePending.current = true;
+    setReferenceBusy(true);
+    try {
+      if (sharedId && valid.src) {
+        const { src } = await post<{ src: string }>(
+          `/api/projects/${sharedId}/assets`,
+          { src: valid.src },
+        );
+        valid = { ...valid, src };
+      }
+      // An upload can overlap a remote edit or role change. Merge into the
+      // latest document and recheck the destination and access after awaiting.
+      const latest = activeProject();
+      const next = documentSchema.parse({
+        ...latest,
+        references: [...latest.references, valid],
+      });
+      commit(next);
+    } finally {
+      referencePending.current = false;
+      if (epoch === referenceEpoch.current) setReferenceBusy(false);
+    }
+  }
+  async function chooseReferenceDestination(destination: ReferenceDestination) {
+    if (referencePending.current)
+      throw new Error("Wait for the current reference action to finish.");
+    if (destination.readOnly) throw new Error("Choose a project you can edit.");
+    referencePending.current = true;
+    setReferenceBusy(true);
+    try {
+      if (!(await save()))
+        throw new Error(
+          "The current project must finish saving before switching.",
+        );
+      // A full navigation gives the destination its own editor lifetime and
+      // clears temporary previews. Project data stays in the existing stores.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Intentionally reset the editor lifetime and all temporary import data for this destination.
+      window.location.assign(
+        `/editor?${destination.shared ? "shared" : "id"}=${encodeURIComponent(destination.id)}`,
+      );
+    } finally {
+      referencePending.current = false;
+      setReferenceBusy(false);
+    }
+  }
   useEffect(() => {
     if (!doc || sharedId) return;
     const timer = setTimeout(() => void save(), 500);
@@ -312,17 +405,20 @@ export default function Editor() {
   }, [doc, versions, save, sharedId]);
   useEffect(() => {
     function warn(e: BeforeUnloadEvent) {
-      if (
-        status !== "Saved on this device" &&
-        status !== "Saved to local server"
-      ) {
+      // Use the acknowledged snapshot, not a render's possibly stale status.
+      // A destination switch can navigate immediately after save() resolves.
+      const persisted = collaboration.current
+        ? collaboration.current.synced
+        : savedSnapshot.current?.document === current.current &&
+          savedSnapshot.current?.versions === currentVersions.current;
+      if (current.current && !persisted) {
         e.preventDefault();
         e.returnValue = "";
       }
     }
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [status]);
+  }, []);
   const patch = (changes: Partial<DesignDocument>) => {
     if (doc) commit({ ...doc, ...changes });
   };
@@ -571,7 +667,7 @@ export default function Editor() {
     );
   return (
     <div
-      className={`editor ${leftOpen && !previewMode ? "" : "left-closed"} ${rightOpen && !previewMode ? "" : "right-closed"} ${editable ? "" : "read-only"}`}
+      className={`editor ${leftOpen && !previewMode ? "" : "left-closed"} ${rightOpen && !previewMode ? "" : "right-closed"} ${editable ? "" : "read-only"} ${referenceOnly ? "reference-only" : ""}`}
     >
       <header className="editor-top">
         <Link
@@ -903,23 +999,40 @@ export default function Editor() {
             </>
           )}
           {tab === "references" && (
-            <ReferenceBoard
-              document={doc}
-              readOnly={!editable}
-              onChange={(references) => patch({ references })}
-              onDirection={(direction) => patch({ direction })}
-              upload={
-                sharedId
-                  ? async (src) =>
-                      (
-                        await post<{ src: string }>(
-                          `/api/projects/${sharedId}/assets`,
-                          { src },
-                        )
-                      ).src
-                  : undefined
-              }
-            />
+            <>
+              {referenceOnly && (
+                <div className="reference-save-state">
+                  <span role="status">{status}</span>
+                  {error && (
+                    <p role="alert" className="error-banner">
+                      {error}
+                    </p>
+                  )}
+                </div>
+              )}
+              <ReferenceBoard
+                document={doc}
+                readOnly={!editable}
+                compact={referenceOnly}
+                projectKey={sharedId ? `shared:${sharedId}` : `local:${doc.id}`}
+                onChange={(references) => patch({ references })}
+                onDirection={(direction) => patch({ direction })}
+                onAdd={addReference}
+                destination={
+                  <ReferenceDestinationPicker
+                    current={{
+                      key: sharedId ? `shared:${sharedId}` : `local:${doc.id}`,
+                      id: sharedId ?? doc.id,
+                      shared: !!sharedId,
+                      title: doc.title,
+                      readOnly: !editable,
+                    }}
+                    disabled={referenceBusy}
+                    onSelect={chooseReferenceDestination}
+                  />
+                }
+              />
+            </>
           )}
           {tab === "versions" && sharedId && (
             <TeamPanel

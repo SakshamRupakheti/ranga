@@ -186,6 +186,10 @@ test("local raster upload and references persist separately", async ({
     mimeType: "image/png",
     buffer: png,
   });
+  await page.getByLabel("I have permission to import this image.").check();
+  await page
+    .getByRole("button", { name: "Add reference", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Select reference reference.png" })
     .click();

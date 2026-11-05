@@ -250,6 +250,13 @@ test(
         { src: image },
         403,
       );
+      await request(
+        viewer.cookie,
+        path + "/assets",
+        "POST",
+        { src: image },
+        403,
+      );
       const a = await connect(owner.cookie, id),
         b = await connect(editor.cookie, id);
       const one = readShared(a.doc),
@@ -257,6 +264,22 @@ test(
       one.layers[0].x = 310;
       two.layers[1].fill = "#112233";
       one.layers.push(newLayer("image", { src }));
+      one.references.push({
+        id: "permitted-reference",
+        name: "Generated reference",
+        src,
+        selected: true,
+        kind: "generated",
+        permissionConfirmed: true,
+        addedAt: new Date().toISOString(),
+      });
+      two.references.push({
+        id: "written-reference",
+        name: "Composition",
+        note: "Original layout with condensed type",
+        selected: false,
+        kind: "inspiration",
+      });
       two.layers.push(newLayer("text", { text: "Concurrent creation" }));
       a.send(one);
       b.send(two);
@@ -270,6 +293,7 @@ test(
       assert.deepEqual(readShared(a.doc), readShared(b.doc));
       assert.equal(readShared(a.doc).layers[0].x, 310);
       assert.equal(readShared(a.doc).layers[1].fill, "#112233");
+      assert.equal(readShared(a.doc).references.length, 2);
       const nextA = readShared(a.doc),
         nextB = readShared(b.doc),
         textBefore = nextA.layers[0].text!;
@@ -350,6 +374,12 @@ test(
       const invalid = readShared(v.doc);
       invalid.title = "Forbidden mutation";
       invalid.discoveryQuery = "Forbidden discovery mutation";
+      invalid.references.push({
+        id: "forbidden-viewer",
+        name: "Forbidden",
+        note: "Viewer import",
+        selected: false,
+      });
       v.send(invalid);
       await until(() => v.closed === 1008);
       assert.equal(
@@ -359,12 +389,23 @@ test(
       const c = await connect(commenter.cookie, id);
       const forbiddenQuery = readShared(c.doc);
       forbiddenQuery.discoveryQuery = "Commenters cannot change discovery";
+      forbiddenQuery.references.push({
+        id: "forbidden-commenter",
+        name: "Forbidden",
+        note: "Commenter import",
+        selected: false,
+      });
       c.send(forbiddenQuery);
       await until(() => c.closed === 1008);
       assert.equal(
         (await (await request(owner.cookie, path)).json()).document
           .discoveryQuery,
         undefined,
+      );
+      assert.equal(
+        (await (await request(owner.cookie, path)).json()).document.references
+          .length,
+        2,
       );
       await request(
         owner.cookie,

@@ -7,6 +7,18 @@ export async function readImage(
     );
   if (file.size > 5 * 1024 * 1024)
     throw new Error("Choose an image smaller than 5 MB.");
+  const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const signatureMatches =
+    file.type === "image/png"
+      ? [137, 80, 78, 71, 13, 10, 26, 10].every((byte, i) => header[i] === byte)
+      : file.type === "image/jpeg"
+        ? header[0] === 255 && header[1] === 216 && header[2] === 255
+        : String.fromCharCode(...header.slice(0, 4)) === "RIFF" &&
+          String.fromCharCode(...header.slice(8, 12)) === "WEBP";
+  if (!signatureMatches)
+    throw new Error(
+      "The image contents do not match its PNG, JPG, or WebP type.",
+    );
   const bitmap = await createImageBitmap(file);
   const { width, height } = bitmap;
   bitmap.close();

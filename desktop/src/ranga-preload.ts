@@ -8,11 +8,12 @@ contextBridge.exposeInMainWorld("rangaBridge", {
     ipcRenderer.send("ranga:context", value),
   openChatGPT: () => ipcRenderer.send("ranga:chatgpt"),
   subscribe: (
-    callback: (value: {
-      type: "query" | "references";
-      key: string;
-      query?: string;
-    }) => void,
+    callback: (
+      value:
+        | { type: "query"; key: string; query: string }
+        | { type: "references"; key: string }
+        | { type: "layout"; key: string; referenceOnly: boolean },
+    ) => void,
   ) => {
     const listener = (
       _event: Electron.IpcRendererEvent,

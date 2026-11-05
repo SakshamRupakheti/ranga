@@ -137,10 +137,13 @@ test("two accounts share a real canvas, recover offline edits, discuss a design,
       page.getByRole("link", { name: "Open Pinterest" }),
     ).toHaveAttribute("target", "_blank");
     await page
-      .getByLabel("Source URL", { exact: true })
+      .getByLabel("Source link or written reference", { exact: true })
       .fill("https://www.pinterest.com/pin/123456789/");
+    await page.getByRole("button", { name: "Preview reference" }).click();
     await page.getByLabel("Reference title").fill("Editorial reference");
-    await page.getByRole("button", { name: "Save source link" }).click();
+    await page
+      .getByRole("button", { name: "Add reference", exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Select reference Editorial reference" })
       .click();
@@ -150,16 +153,54 @@ test("two accounts share a real canvas, recover offline edits, discuss a design,
     await page
       .getByLabel("Collection", { exact: true })
       .fill("Poster direction");
+    // Hold this upload while the other editor contributes a reference.
+    let releaseUpload!: () => void;
+    let uploadStarted!: () => void;
+    const uploadGate = new Promise<void>((resolve) => {
+      releaseUpload = resolve;
+    });
+    const uploadSeen = new Promise<void>((resolve) => {
+      uploadStarted = resolve;
+    });
+    await page.route("**/api/projects/*/assets", async (route) => {
+      uploadStarted();
+      await uploadGate;
+      await route.continue();
+    });
     await page.getByLabel("Upload reference image").setInputFiles({
       name: "permitted-reference.png",
       mimeType: "image/png",
       buffer: png,
     });
+    await page.getByLabel("I have permission to import this image.").check();
+    await page
+      .getByRole("button", { name: "Add reference", exact: true })
+      .click();
+    await uploadSeen;
+    try {
+      await expect(page.getByLabel("Destination project")).toBeDisabled();
+      await b.getByRole("button", { name: "References", exact: true }).click();
+      await b
+        .getByLabel("Source link or written reference")
+        .fill("A collaborator's typography direction");
+      await b.getByRole("button", { name: "Preview reference" }).click();
+      await b
+        .getByRole("button", { name: "Add reference", exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", {
+          name: "Select reference Written reference",
+        }),
+      ).toBeVisible();
+    } finally {
+      releaseUpload();
+    }
     await expect(
       page.getByRole("button", {
         name: "Select reference permitted-reference.png",
       }),
     ).toBeVisible();
+    await page.unroute("**/api/projects/*/assets");
     await page.getByRole("button", { name: "Creative tools" }).click();
     await expect(
       page.getByRole("link", { name: "Open ChatGPT" }),
@@ -216,7 +257,13 @@ test("two accounts share a real canvas, recover offline edits, discuss a design,
     await synced(page);
     const exported = await backup(page);
     expect(exported.layers).toHaveLength(2);
-    expect(exported.references).toHaveLength(2);
+    expect(exported.references).toHaveLength(3);
+    expect(
+      exported.references.some(
+        (reference: { note?: string }) =>
+          reference.note === "A collaborator's typography direction",
+      ),
+    ).toBe(true);
     expect(exported.discoveryQuery).toBe("University poster discovery");
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const jpg = page.waitForEvent("download");
@@ -362,6 +409,16 @@ test("commenter and viewer sessions expose only their permitted controls", async
       await expect(pages[i].getByLabel("Text content")).toBeDisabled();
       await pages[i].getByRole("button", { name: "Creative tools" }).click();
       await expect(pages[i].getByLabel("Discovery query")).toBeDisabled();
+      await pages[i]
+        .getByRole("button", { name: "References", exact: true })
+        .click();
+      await expect(
+        pages[i].getByLabel("Source link or written reference"),
+      ).toBeDisabled();
+      await expect(
+        pages[i].getByLabel("Upload reference image"),
+      ).toBeDisabled();
+      await expect(pages[i].getByLabel("Creative direction")).toBeDisabled();
       await pages[i].getByRole("button", { name: "Team", exact: true }).click();
     }
     const commenter = pages[1],

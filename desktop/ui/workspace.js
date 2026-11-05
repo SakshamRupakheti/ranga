@@ -62,6 +62,17 @@ bridge.subscribe((state) => {
   byId("dismiss").hidden = !state.message;
   byId("prompt-panel").hidden = !state.promptOpen;
   byId("prompt-toggle").setAttribute("aria-expanded", String(state.promptOpen));
+  byId("references").setAttribute(
+    "aria-expanded",
+    String(state.referenceTrayOpen),
+  );
+  byId("references").textContent = state.referenceTrayOpen
+    ? "Close references"
+    : "References";
+  byId("references").title =
+    state.mode === "discover"
+      ? "Toggle the project reference tray below both tools"
+      : "Open the active project's reference board";
   if (byId("prompt").value !== state.prompt)
     byId("prompt").value = state.prompt;
   byId("copy-prompt").disabled = !state.prompt;

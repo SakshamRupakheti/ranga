@@ -27,6 +27,7 @@ import {
   discoveryPrompt,
   originLabel,
   paneBounds,
+  referenceTrayBounds,
   rangaUrl,
   type Command,
   type Site,
@@ -67,6 +68,7 @@ const securePreferences = {
   webSecurity: true,
   webviewTag: false,
   allowRunningInsecureContent: false,
+  navigateOnDragDrop: false,
 };
 
 let window: BrowserWindow | undefined;
@@ -81,6 +83,7 @@ let mode: Mode = "focus";
 let query = "";
 let context: ProjectContext | undefined;
 let promptOpen = false;
+let referenceTrayOpen = false;
 let ratio = 0.5;
 let swapped = false;
 let pendingSearch = "";
@@ -129,6 +132,7 @@ function publish() {
     editable: context?.editable ?? false,
     prompt: discoveryPrompt(query, context),
     promptOpen,
+    referenceTrayOpen: mode === "discover" && referenceTrayOpen,
     ratio,
     pages: {
       ranga: pageStatus("ranga"),
@@ -310,6 +314,15 @@ function ensureView(site: Site, initialUrl = homeUrls[site]) {
   return view;
 }
 
+function syncReferenceLayout() {
+  if (context)
+    views.get("ranga")?.webContents.send("ranga:discovery", {
+      type: "layout",
+      key: context.key,
+      referenceOnly: mode === "discover" && referenceTrayOpen,
+    });
+}
+
 function layout() {
   if (!window || window.isDestroyed()) return;
   const visible: Site[] =
@@ -320,19 +333,25 @@ function layout() {
         : [selected];
   if (swapped && visible.length === 2) visible.reverse();
   const [width, height] = window.getContentSize();
+  const tray =
+    mode === "discover" && referenceTrayOpen
+      ? referenceTrayBounds(width, height)
+      : undefined;
   const bounds = paneBounds(
     width,
     height,
     visible.length === 2,
     ratio,
-    promptOpen ? 240 : 0,
+    tray ? tray.height + 2 : promptOpen ? 240 : 0,
   );
   visible.forEach((site) => ensureView(site));
   for (const [site, view] of views) {
     const index = visible.indexOf(site);
-    view.setVisible(index >= 0);
-    if (index >= 0) view.setBounds(bounds[index]);
+    view.setVisible(index >= 0 || (site === "ranga" && !!tray));
+    if (site === "ranga" && tray) view.setBounds(tray);
+    else if (index >= 0) view.setBounds(bounds[index]);
   }
+  syncReferenceLayout();
   publish();
 }
 
@@ -413,6 +432,7 @@ function copyText(value: string, confirmation: string) {
     return true;
   } catch {
     promptOpen = true;
+    referenceTrayOpen = false;
     message =
       "Clipboard is unavailable. Select and copy the text in the prompt panel.";
     layout();
@@ -470,6 +490,7 @@ function runCommand(command: Command) {
       break;
     case "prompt":
       promptOpen = !promptOpen;
+      if (promptOpen) referenceTrayOpen = false;
       layout();
       break;
     case "copy-prompt":
@@ -500,7 +521,18 @@ function runCommand(command: Command) {
           type: "references",
           key: context.key,
         });
-        setMode("focus");
+        if (mode === "discover") {
+          referenceTrayOpen = !referenceTrayOpen;
+          if (referenceTrayOpen) promptOpen = false;
+          layout();
+          focused = referenceTrayOpen ? "ranga" : "pinterest";
+          views.get(focused)?.webContents.focus();
+        } else {
+          // The same board is available beside the canvas in Design mode.
+          focused = "ranga";
+          if (mode === "focus" && selected !== "ranga") setMode("focus");
+          views.get("ranga")?.webContents.focus();
+        }
       } else {
         setMode("focus");
         message = "Open a project to use its existing reference board.";
@@ -575,6 +607,7 @@ ipcMain.on("ranga:context", (event, value: unknown) => {
   if (!context || context.key !== value.key || context.query !== value.query)
     query = value.query;
   context = value;
+  syncReferenceLayout();
   publish();
 });
 ipcMain.on("ranga:chatgpt", (event) => {

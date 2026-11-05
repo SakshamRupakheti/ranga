@@ -7,6 +7,7 @@ const {
   isSite,
   originLabel,
   paneBounds,
+  referenceTrayBounds,
   rangaUrl,
   normalizeQuery,
   pinterestSearchUrl,
@@ -16,6 +17,24 @@ const {
   isMode,
 } = require("../dist/policy.js");
 const local = "http://127.0.0.1:3001/projects";
+
+test("reference tray preserves two usable discovery panes at minimum and large sizes", () => {
+  for (const [width, height] of [
+    [960, 611],
+    [960, 650],
+    [1440, 900],
+  ]) {
+    const tray = referenceTrayBounds(width, height);
+    const panes = paneBounds(width, height, true, 0.5, tray.height + 2);
+    assert.equal(tray.y + tray.height, height);
+    assert.equal(tray.width, width);
+    assert.ok(tray.height >= 230 && tray.height <= 380);
+    for (const pane of panes) {
+      assert.equal(pane.y + pane.height + 2, tray.y);
+      assert.ok(pane.width >= 479 && pane.height >= 230);
+    }
+  }
+});
 
 test("Ranga is restricted to the configured loopback origin", () => {
   assert.equal(rangaUrl(), local);
