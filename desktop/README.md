@@ -30,10 +30,10 @@ Desktop has its own browser profile. It cannot see local projects saved in Chrom
 Sign into ChatGPT and Pinterest yourself in their panes. Sessions persist separately for each site. Existing Chrome/Edge sign-ins are not imported. Some sites and identity providers reject embedded browsers or require features this preview does not support. **Open in browser** opens the site's home page in your regular browser; it does not transfer the desktop session or its sign-in URL. Authenticated ChatGPT/Pinterest compatibility is not guaranteed or verified by the automated tests.
 
 1. Open a Ranga project, then enter a design query in the desktop search bar. **Search** sends only the query to Pinterest and displays Pinterest beside ChatGPT. It does not send a ChatGPT message. Queries accept up to 500 characters, normalize whitespace, and reject hidden control characters.
-2. Use **Prompt** to review the locally prepared instructions. An open project adds its brief, selected reference descriptions, dimensions, available image IDs and existing recipe schema. Without a project, you get a general design-discussion prompt.
+2. Use **Prompt** to review the locally prepared instructions. An open project adds its brief, selected reference descriptions, requested changes, dimensions, available image IDs and existing recipe schema. Without a project, you get a general design-discussion prompt. Edit **Changes for ChatGPT** in References or Creative tools to specify what to keep or change.
 3. Choose **Copy & ChatGPT**, then paste and submit yourself. **Copy instructions & open ChatGPT** in the editor's Creative tools panel also copies and focuses the desktop pane. Attach permitted images manually.
 4. In Discover, choose **References** to open the active project's board below both website panes. The same editor becomes the tray; **Design** or **Focus** restores its canvas. The tray and Prompt drawer open one at a time. In Design/Focus, References opens the editor's normal board.
-5. Paste a returned JSON recipe into the existing **Creative tools → Import result** validator, review it and apply. Download permitted raster results yourself, then upload them in Ranga. Use the reference board's paste area with Ctrl/Cmd+V for clipboard images. The separate clipboard-read button remains denied in desktop.
+5. Choose **Bring into Ranga** in the toolbar to open the current project's return panel beside ChatGPT. Paste text, a link or a JSON recipe, or choose a JSON/PNG/JPEG/WebP file. Review the detected result before applying. Recipes use the existing editable layer importer after a saved checkpoint. Images, links and descriptions enter the reference board; images require permission confirmation and stay raster images. Use Ctrl/Cmd+V or Choose file when the explicit Read clipboard button is denied in desktop.
 
 Editable projects save the latest discovery query through the normal document history, autosave and shared synchronization. **Creative tools → Discovery query** also lets you edit it on the web. Viewers/commenters can search but their new query stays only in the desktop session; they cannot change saved project metadata. Queries without an open project also stay in memory. Opening another project restores that project's query. Prompts are not stored separately, and Ranga does not capture ChatGPT conversations.
 
@@ -51,6 +51,7 @@ There is no automatic account connection, scraping, prompt submission, image dow
 - **Back / Forward / Reload / Site home**: operate on the last focused visible pane. Click a pane to focus it. Ctrl/Cmd+R reloads it.
 - **Open in browser**: open that site's home page externally. Other HTTPS destinations show an explicit **Open link** choice in the toolbar.
 - **Help**: startup commands, project migration, and manual handoff instructions.
+- **Bring into Ranga**: open the current project's return panel in Design mode. It does not read the clipboard. A project must be open, and only its owner/editor can import.
 
 ## Collect references
 
@@ -61,6 +62,14 @@ Drop browser-provided PNG/JPEG/WebP files, plain text or a source link into the 
 Image files keep the existing 5 MB, 24-megapixel and 10,000-pixel-side limits. MIME and file signatures must match. HTTP/HTTPS source links without credentials are saved as links, including links ending in image extensions. Ranga never downloads the linked image or parses dragged HTML. Up to 12 references use the existing selection, compare, collections, reordering, removal and creative-direction controls. The tray displays the real project save/sync state.
 
 Cross-view drag data depends on Chromium and the source website. When no supported data arrives, use paste, a local file, or an attributed source URL. This does not guarantee arbitrary Pinterest image dragging. Programmatic clipboard reads remain denied in desktop; the Clipboard button explains the keyboard/file fallback. Temporary previews clear when leaving the board or changing between the tray and full editor.
+
+## Prepare and return a concept
+
+Selected reference names, use classifications and descriptions feed the prompt alongside saved keep/change/text/logo/color/layout/originality instructions. An image card with confirmed permission and Owned or Generated use can be downloaded for manual attachment in ChatGPT. Inspiration-only and source-only cards have no image download action. No external attachment or send is automated.
+
+Recipe application requires the composition to match its preview. Ranga checks again after saving the checkpoint, preserving newer metadata and refusing to overwrite intervening canvas edits or a changed destination/access role. Failed saves keep the preview available for retry. Undo and History provide recovery. Integrated raster canvas handoff and a visual recipe rendering are later work.
+
+First-party project prompts exceeding the 150 KB native message limit explicitly disable toolbar copying and direct you to Creative tools for the full prompt. An older prompt cannot remain available as if current. The new project-bound bring event only opens the return panel; it grants no clipboard or website access.
 
 ## Configuration and privacy
 

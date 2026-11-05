@@ -262,6 +262,11 @@ test(
       const one = readShared(a.doc),
         two = readShared(b.doc);
       one.layers[0].x = 310;
+      one.changeInstructions = {
+        preserve: "Type hierarchy",
+        replace: "Original composition",
+        colors: "Black and orange",
+      };
       two.layers[1].fill = "#112233";
       one.layers.push(newLayer("image", { src }));
       one.references.push({
@@ -294,6 +299,10 @@ test(
       assert.equal(readShared(a.doc).layers[0].x, 310);
       assert.equal(readShared(a.doc).layers[1].fill, "#112233");
       assert.equal(readShared(a.doc).references.length, 2);
+      assert.deepEqual(
+        readShared(b.doc).changeInstructions,
+        one.changeInstructions,
+      );
       const nextA = readShared(a.doc),
         nextB = readShared(b.doc),
         textBefore = nextA.layers[0].text!;
@@ -374,6 +383,7 @@ test(
       const invalid = readShared(v.doc);
       invalid.title = "Forbidden mutation";
       invalid.discoveryQuery = "Forbidden discovery mutation";
+      invalid.changeInstructions = { preserve: "Viewer must not edit handoff" };
       invalid.references.push({
         id: "forbidden-viewer",
         name: "Forbidden",
@@ -389,6 +399,9 @@ test(
       const c = await connect(commenter.cookie, id);
       const forbiddenQuery = readShared(c.doc);
       forbiddenQuery.discoveryQuery = "Commenters cannot change discovery";
+      forbiddenQuery.changeInstructions = {
+        preserve: "Commenter must not edit handoff",
+      };
       forbiddenQuery.references.push({
         id: "forbidden-commenter",
         name: "Forbidden",
@@ -397,6 +410,11 @@ test(
       });
       c.send(forbiddenQuery);
       await until(() => c.closed === 1008);
+      assert.deepEqual(
+        (await (await request(owner.cookie, path)).json()).document
+          .changeInstructions,
+        one.changeInstructions,
+      );
       assert.equal(
         (await (await request(owner.cookie, path)).json()).document
           .discoveryQuery,

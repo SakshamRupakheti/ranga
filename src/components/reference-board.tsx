@@ -8,9 +8,12 @@ import {
   Check,
   Trash2,
   FileText,
+  Download,
 } from "lucide-react";
 import { sourceUrlSchema, type DesignDocument } from "@/lib/document";
 import { ReferenceImport } from "./reference-import";
+import { imageData } from "@/lib/api";
+import { download, safeFilename } from "@/lib/files";
 type Reference = DesignDocument["references"][number];
 export function ReferenceBoard({
   document: doc,
@@ -20,6 +23,7 @@ export function ReferenceBoard({
   projectKey,
   compact = false,
   destination,
+  handoff,
   readOnly = false,
 }: {
   document: DesignDocument;
@@ -29,11 +33,13 @@ export function ReferenceBoard({
   projectKey: string;
   compact?: boolean;
   destination: ReactNode;
+  handoff: ReactNode;
   readOnly?: boolean;
 }) {
   const [filter, setFilter] = useState("");
   const [compare, setCompare] = useState(false);
   const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState<string | null>(null);
   function change(id: string, updates: Partial<Reference>) {
     onChange(
       doc.references.map((r) => (r.id === id ? { ...r, ...updates } : r)),
@@ -205,6 +211,43 @@ export function ReferenceBoard({
                     </select>
                   </label>
                   <div className="reference-actions">
+                    {r.src &&
+                      r.permissionConfirmed &&
+                      (r.kind === "owned" || r.kind === "generated") && (
+                        <button
+                          aria-label={`Download reference image ${r.name}`}
+                          disabled={downloading !== null}
+                          onClick={async () => {
+                            setDownloading(r.id);
+                            setError("");
+                            try {
+                              const data = await imageData(r.src!);
+                              const mime =
+                                /^data:image\/(png|jpeg|webp);base64,/.exec(
+                                  data,
+                                );
+                              if (!mime)
+                                throw new Error(
+                                  "This reference is not a supported raster image.",
+                                );
+                              download(
+                                data,
+                                `${safeFilename(r.name)}.${mime[1] === "jpeg" ? "jpg" : mime[1]}`,
+                              );
+                            } catch (error) {
+                              setError(
+                                error instanceof Error
+                                  ? error.message
+                                  : "The reference image could not be downloaded.",
+                              );
+                            } finally {
+                              setDownloading(null);
+                            }
+                          }}
+                        >
+                          <Download size={13} />
+                        </button>
+                      )}
                     <button
                       disabled={readOnly}
                       aria-label={`Move ${r.name} up`}
@@ -256,6 +299,7 @@ export function ReferenceBoard({
               placeholder="What connects these references?"
             />
           </label>
+          {handoff}
         </div>
       </div>
       {error && (

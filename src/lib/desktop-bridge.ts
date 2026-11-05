@@ -3,6 +3,7 @@
 export type DiscoveryEvent =
   | { type: "query"; key: string; query: string }
   | { type: "references"; key: string }
+  | { type: "bring"; key: string }
   | { type: "layout"; key: string; referenceOnly: boolean };
 declare global {
   interface Window {
@@ -12,7 +13,7 @@ declare global {
           key: string;
           name: string;
           query: string;
-          prompt: string;
+          prompt: string | null;
           editable: boolean;
         } | null,
       ) => void;

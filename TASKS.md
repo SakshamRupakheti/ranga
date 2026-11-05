@@ -1,6 +1,6 @@
 # Living task list
 
-Updated 2026-11-04. Preserve the existing Ranga editor. Revised direction: native collaboration and manual creative handoff, with no OpenAI, Pinterest, or Canva APIs in the MVP.
+Updated 2026-11-05. Preserve the existing Ranga editor. Revised direction: native collaboration and manual creative handoff, with no OpenAI, Pinterest, or Canva APIs in the MVP.
 
 ## Completed: native editor foundation
 
@@ -31,8 +31,8 @@ Updated 2026-11-04. Preserve the existing Ranga editor. Revised direction: nativ
 - [x] Project query persistence through existing IndexedDB/Yjs paths, with role checks, stale-project rejection, and narrow first-party IPC. No third-party pane receives a preload.
 - [x] Adjustable split proportions, swapping, focus expansion, original navigation/shortcuts, reference-board shortcut, and compact 132-pixel toolbar.
 - [x] Milestone 2: collapsible Discover reference tray with provided drop/paste/file previews, source links and written references, attribution, image permission confirmation, classification, destination selection and real save/sync feedback, reusing the existing reference board and permissions.
-- [ ] Milestone 3: fuller reference change instructions and explicit clipboard return through Bring into Ranga.
-- [ ] Milestone 4: unified image/recipe preview, checkpoint, canvas handoff and recovery through existing authorized paths. Existing recipe import already supports validation and checkpoints.
+- [x] Milestone 3: saved keep/change/text/logo/color/layout/originality instructions; selected-reference prompt review, explicit copy/focus and permitted image download; Bring into Ranga with typed clipboard/paste/file previews, validated editable recipes, durable checkpoints, stale-composition protection and reference imports.
+- [ ] Milestone 4: integrated image-to-canvas handoff and visual composition previews through existing authorized paths. Recipe imports already save a checkpoint and support Undo; returned images currently enter the reference board as raster images.
 - [ ] Milestone 5: end-to-end tray polish, accessibility/device testing and expanded failure coverage. A Windows native cross-view link-drag attempt did not reach the preview; browser-provided transfer data and paste/file/link fallbacks are tested. No arbitrary Pinterest image transfer is claimed.
 
 ## Partially complete or environment-dependent

@@ -107,6 +107,8 @@ test("first-party context is bound to the editor project and bounded before clip
     editable: true,
   };
   assert.ok(validContext(context, key));
+  assert.ok(validContext({ ...context, prompt: null }, key));
+  assert.equal(discoveryPrompt("Poster", { ...context, prompt: null }), "");
   for (const invalid of [
     { ...context, key: "local:other" },
     { ...context, prompt: "x".repeat(150001) },
@@ -183,6 +185,7 @@ test("system browser handoff rejects executable URLs and credentials", () => {
 
 test("IPC command and site vocabulary is closed", () => {
   assert.ok(isCommand("split"));
+  assert.ok(isCommand("bring"));
   assert.ok(isSite("pinterest"));
   for (const value of [
     null,

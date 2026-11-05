@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("rangaBridge", {
       value:
         | { type: "query"; key: string; query: string }
         | { type: "references"; key: string }
+        | { type: "bring"; key: string }
         | { type: "layout"; key: string; referenceOnly: boolean },
     ) => void,
   ) => {

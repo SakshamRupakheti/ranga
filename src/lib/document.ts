@@ -51,6 +51,18 @@ export const briefSchema = z.object({
   typography: z.string().max(200),
   instructions: z.string().max(3000),
 });
+export const changeInstructionsSchema = z
+  .object({
+    preserve: z.string().max(1500).optional(),
+    replace: z.string().max(1500).optional(),
+    text: z.string().max(1500).optional(),
+    logo: z.string().max(1000).optional(),
+    colors: z.string().max(1000).optional(),
+    layout: z.string().max(1500).optional(),
+    originality: z.string().max(1500).optional(),
+  })
+  .strict();
+export type ChangeInstructions = z.infer<typeof changeInstructionsSchema>;
 export type DesignBrief = z.infer<typeof briefSchema>;
 export const discoveryQuerySchema = z
   .string()
@@ -97,6 +109,7 @@ export const documentSchema = z
     layers: z.array(layerSchema).max(200),
     references: z.array(referenceSchema).max(12),
     brief: briefSchema.optional(),
+    changeInstructions: changeInstructionsSchema.optional(),
     discoveryQuery: discoveryQuerySchema.optional(),
     direction: z.string().max(5000),
     createdAt: z.string().datetime(),
