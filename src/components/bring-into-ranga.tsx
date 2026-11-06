@@ -11,6 +11,7 @@ import {
 } from "@/lib/incoming-result";
 import { transferText, type Reference } from "@/lib/reference-import";
 import { ReferenceImport } from "./reference-import";
+import { DesignPreview } from "./design-preview";
 
 export type RecipeImportRequest = {
   raw: string;
@@ -23,21 +24,36 @@ export function BringIntoRanga({
   readOnly,
   onImport,
   onReference,
+  onCanvas,
+  downloadedFile,
 }: {
   document: DesignDocument;
   projectKey: string;
   readOnly: boolean;
   onImport: (request: RecipeImportRequest) => Promise<void>;
   onReference: (reference: Reference, projectKey: string) => Promise<void>;
+  onCanvas: (reference: Reference, projectKey: string) => Promise<void>;
+  downloadedFile?: File;
 }) {
   const [raw, setRaw] = useState("");
   const [incoming, setIncoming] = useState<IncomingResult | null>(null);
+  const [renderedDocument, setRenderedDocument] =
+    useState<DesignDocument | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const sequence = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const previewPanel = useRef<HTMLDivElement>(null);
+  const resultReady = incoming !== null;
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
+  useEffect(() => {
+    if (resultReady) previewPanel.current?.focus();
+  }, [resultReady]);
   useEffect(
     () => () => {
       sequence.current++;
@@ -79,7 +95,10 @@ export function BringIntoRanga({
           : "Reference ready to review. Nothing has been added yet.",
       );
     } catch (error) {
-      if (version === sequence.current) report(error);
+      if (version === sequence.current) {
+        if (input !== "clipboard" && input.text) setRaw(input.text);
+        report(error);
+      }
     } finally {
       pending.current = false;
       if (version === sequence.current) setBusy(false);
@@ -105,7 +124,9 @@ export function BringIntoRanga({
     incoming?.kind === "recipe" && incoming.composition !== compositionKey(doc);
   return (
     <section className="bring-into-ranga" aria-label="Bring into Ranga">
-      <h3>Bring into Ranga</h3>
+      <h3 ref={heading} tabIndex={-1}>
+        Bring into Ranga
+      </h3>
       <p className="quiet-note">
         Destination: {doc.title}
         {readOnly ? " · Read-only" : ""}
@@ -117,6 +138,20 @@ export function BringIntoRanga({
       )}
       {!incoming ? (
         <fieldset disabled={readOnly || busy}>
+          {downloadedFile && (
+            <div className="downloaded-result">
+              <p className="quiet-note">
+                Downloaded file: {downloadedFile.name} ·{" "}
+                {Math.ceil(downloadedFile.size / 1024)} KB
+              </p>
+              <button
+                className="button button-accent full-width"
+                onClick={() => void preview({ file: downloadedFile })}
+              >
+                Preview downloaded file
+              </button>
+            </div>
+          )}
           <p className="panel-description">
             Paste a returned recipe, source link or description, or choose a
             JSON or image file. Review it before anything changes.
@@ -178,9 +213,9 @@ export function BringIntoRanga({
             Preview result
           </button>
           <p className="quiet-note">
-            Recipes replace the composition after a checkpoint. Links,
-            descriptions and images become references. Images stay raster
-            images.
+            Recipes replace the composition after a checkpoint. Images can
+            become raster layers or references. Links and descriptions become
+            references.
           </p>
         </fieldset>
       ) : incoming.kind === "reference" ? (
@@ -189,6 +224,7 @@ export function BringIntoRanga({
           initialPreview={incoming.preview}
           readOnly={readOnly}
           onCancel={cancel}
+          onCanvas={onCanvas}
           onAdd={async (reference, key) => {
             await onReference(reference, key);
             cancel();
@@ -198,12 +234,18 @@ export function BringIntoRanga({
           }}
         />
       ) : (
-        <div className="recipe-preview">
+        <div
+          className="recipe-preview"
+          ref={previewPanel}
+          tabIndex={-1}
+          role="group"
+          aria-label="Recipe preview"
+        >
           <strong>{incoming.document.title}</strong>
-          <p>
-            {incoming.document.width} × {incoming.document.height} ·{" "}
-            {incoming.document.layers.length} editable layers
-          </p>
+          <DesignPreview
+            document={incoming.document}
+            onRendered={setRenderedDocument}
+          />
           <p className="quiet-note">
             Replaces the current {doc.layers.length} layers, canvas size,
             background and title. References, brief and change instructions
@@ -217,7 +259,12 @@ export function BringIntoRanga({
           )}
           <button
             className="button button-accent full-width"
-            disabled={readOnly || busy || stale}
+            disabled={
+              readOnly ||
+              busy ||
+              stale ||
+              renderedDocument !== incoming.document
+            }
             onClick={async () => {
               if (pending.current) return;
               pending.current = true;

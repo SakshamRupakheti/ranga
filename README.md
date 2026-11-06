@@ -32,7 +32,7 @@ npm start --prefix desktop
 
 The desktop preview uses Electron and needs no third-party API keys. Sign in and copy/import content manually. Browser-only projects stay in their original browser profile; move them with JSON backups or sign into Ranga for shared projects. Some website sign-ins may require the **Open in browser** fallback. See the [desktop guide](desktop/README.md) for setup, privacy, controls, tests, and current limits. This is a source-run preview; signed installers are not available yet.
 
-Open a project before searching to include its brief, selected reference descriptions, dimensions, and recipe schema. **Prompt** lets you review the result; **Copy & ChatGPT** copies it and focuses ChatGPT. Paste and submit yourself. Project queries use the existing save/sync path and permissions. The unified reference/import tray is a later milestone under [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1).
+Open a project before searching to include its brief, selected reference descriptions, dimensions, and recipe schema. **References** opens the project's tray below both websites. **Prompt** lets you review the instructions; **Copy & ChatGPT** copies them and focuses ChatGPT. Paste and submit yourself. **Bring into Ranga** accepts the result for preview, then adds a confirmed raster image or applies an editable recipe with a saved checkpoint. Completed website downloads also offer an explicit **Import download** handoff. Project queries, references, and instructions use the existing save/sync path and permissions. See [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1).
 
 ## Working features
 
@@ -42,8 +42,19 @@ Open a project before searching to include its brief, selected reference descrip
 - Persistent Yjs editing with field-level changes, collaborative text, presence, selections/cursors, offline reconnect, per-user undo, server-enforced owner/editor/commenter/viewer roles, expiring invitations, and immediate membership revocation.
 - Live project/layer/coordinate comments, replies, resolve/reopen, activity, notifications, shared snapshots and owner-controlled restoration.
 - Pinterest/source links with attribution; permitted file/clipboard images, notes, collections, ordering, selection, and reference comparison. Source URLs are stored without scraping or downloading their images.
-- External ChatGPT shortcut, deterministic design brief/prompt builder, exact JSON recipe schema, validation before import, and separately editable supported layers.
+- External ChatGPT shortcut, saved keep/change instructions, deterministic prompt builder, exact JSON recipe schema, rendered composition previews, and separately editable supported layers.
+- Confirmed image-to-canvas import from returned files or existing owned/generated references, centered placement, retained attribution, durable checkpoints, Undo/Redo, and shared permission checks.
 - PNG/JPEG at document resolution, SVG with text/shapes and embedded images, portable JSON backups, a local brand kit, and light/dark themes.
+
+## Try the complete local workflow
+
+1. Open **Projects → New design** and add text, shapes or an image. Work saves automatically on this device.
+2. Open **References** to collect permitted images, written directions and source links; select the references you want to discuss. In desktop, **Discover** places this tray below Pinterest and ChatGPT.
+3. Set the brief and keep/change instructions under **Creative tools**. Review and copy the prompt, then paste/send it in your own ChatGPT account. Attach permitted images yourself.
+4. Choose **Bring into Ranga** and paste a result or select a file. For an image, confirm permission and Owned/Generated use, then **Add image layer**. For a recipe, review the rendered design and **Apply validated design**. Links and descriptions can be saved as references.
+5. Edit the result on the canvas. Use **Undo**, **Redo**, or **History** to recover. Export PNG, JPEG, SVG or an editable Ranga backup. **Share → Create shared copy** enables the local collaborative workflow.
+
+The [recipe guide](docs/DESIGN_RECIPE.md) explains supported input, limits and recovery. Website results remain user-provided; Ranga does not read or automate the external accounts.
 
 ## Data and limits
 

@@ -42,6 +42,12 @@ bridge.subscribe((state) => {
     );
   });
   byId("project").textContent = state.projectName;
+  byId("import-download").hidden = !state.downloadName;
+  byId("import-download").disabled = state.downloadBusy;
+  byId("import-download").title =
+    `Preview ${state.downloadName} in ${state.projectName}`;
+  byId("dismiss-download").hidden = !state.downloadName;
+  byId("dismiss-download").disabled = state.downloadBusy;
   byId("project").title = state.projectKey
     ? `${state.projectName}${state.editable ? "" : " (read-only)"}`
     : "Open a project in Ranga to keep its query";

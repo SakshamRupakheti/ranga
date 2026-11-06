@@ -7,12 +7,18 @@ contextBridge.exposeInMainWorld("rangaBridge", {
   context: (value: ProjectContext | null) =>
     ipcRenderer.send("ranga:context", value),
   openChatGPT: () => ipcRenderer.send("ranga:chatgpt"),
+  focusCanvas: (key: string) => ipcRenderer.send("ranga:canvas", key),
   subscribe: (
     callback: (
       value:
         | { type: "query"; key: string; query: string }
         | { type: "references"; key: string }
         | { type: "bring"; key: string }
+        | {
+            type: "download";
+            key: string;
+            file: { name: string; type: string; data: string };
+          }
         | { type: "layout"; key: string; referenceOnly: boolean },
     ) => void,
   ) => {

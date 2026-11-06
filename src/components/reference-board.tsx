@@ -20,6 +20,7 @@ export function ReferenceBoard({
   onChange,
   onDirection,
   onAdd,
+  onCanvas,
   projectKey,
   compact = false,
   destination,
@@ -30,6 +31,7 @@ export function ReferenceBoard({
   onChange: (references: Reference[]) => void;
   onDirection: (value: string) => void;
   onAdd: (reference: Reference, projectKey: string) => Promise<void>;
+  onCanvas: (reference: Reference, projectKey: string) => Promise<void>;
   projectKey: string;
   compact?: boolean;
   destination: ReactNode;
@@ -82,6 +84,7 @@ export function ReferenceBoard({
             projectKey={projectKey}
             readOnly={readOnly}
             onAdd={onAdd}
+            onCanvas={onCanvas}
           />
         </div>
         <div className="reference-library">
@@ -211,6 +214,31 @@ export function ReferenceBoard({
                     </select>
                   </label>
                   <div className="reference-actions">
+                    {r.src &&
+                      r.permissionConfirmed &&
+                      (r.kind === "owned" || r.kind === "generated") && (
+                        <button
+                          aria-label={`Add ${r.name} to canvas`}
+                          disabled={readOnly || downloading !== null}
+                          onClick={async () => {
+                            setDownloading(r.id);
+                            setError("");
+                            try {
+                              await onCanvas(r, projectKey);
+                            } catch (error) {
+                              setError(
+                                error instanceof Error
+                                  ? error.message
+                                  : "The image could not be added.",
+                              );
+                            } finally {
+                              setDownloading(null);
+                            }
+                          }}
+                        >
+                          Add image layer
+                        </button>
+                      )}
                     {r.src &&
                       r.permissionConfirmed &&
                       (r.kind === "owned" || r.kind === "generated") && (

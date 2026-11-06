@@ -17,12 +17,14 @@ export function ReferenceImport({
   onAdd,
   initialPreview,
   onCancel,
+  onCanvas,
 }: {
   projectKey: string;
   readOnly: boolean;
   onAdd: (reference: Reference, projectKey: string) => Promise<void>;
   initialPreview?: Preview;
   onCancel?: () => void;
+  onCanvas?: (reference: Reference, projectKey: string) => Promise<void>;
 }) {
   const [raw, setRaw] = useState("");
   const [preview, setPreview] = useState<Preview | null>(
@@ -36,6 +38,11 @@ export function ReferenceImport({
   const sequence = useRef(0);
   const pending = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const previewPanel = useRef<HTMLFieldSetElement>(null);
+  const previewReady = preview !== null;
+  useEffect(() => {
+    if (previewReady) previewPanel.current?.focus();
+  }, [previewReady]);
   useEffect(
     () => () => {
       sequence.current++;
@@ -120,11 +127,15 @@ export function ReferenceImport({
       );
     }
   }
-  async function confirm() {
+  async function confirm(target: "reference" | "canvas" = "reference") {
     if (!preview || readOnly || pending.current) return;
     pending.current = true;
     setBusy(true);
-    setPhase("Adding reference…");
+    setPhase(
+      target === "canvas"
+        ? "Saving a checkpoint and adding image…"
+        : "Adding reference…",
+    );
     setError("");
     const version = sequence.current;
     try {
@@ -141,10 +152,17 @@ export function ReferenceImport({
         ...(preview.src && permission ? { permissionConfirmed: true } : {}),
         addedAt: new Date().toISOString(),
       });
-      await onAdd(ref, projectKey);
+      if (target === "canvas") {
+        if (!onCanvas) throw new Error("Image import is unavailable.");
+        await onCanvas(ref, projectKey);
+      } else await onAdd(ref, projectKey);
       if (sequence.current === version) {
         reset();
-        setMessage("Reference added. Your project saves automatically.");
+        setMessage(
+          target === "canvas"
+            ? "Image layer added. Use Undo or History to recover your previous design."
+            : "Reference added. Your project saves automatically.",
+        );
       }
     } catch (error) {
       if (sequence.current === version) report(error);
@@ -224,7 +242,13 @@ export function ReferenceImport({
           </p>
         </fieldset>
       ) : (
-        <fieldset disabled={readOnly || busy} className="reference-preview">
+        <fieldset
+          disabled={readOnly || busy}
+          className="reference-preview"
+          ref={previewPanel}
+          tabIndex={-1}
+          aria-label="Reference preview"
+        >
           {preview.src ? (
             <>
               <Image
@@ -311,6 +335,20 @@ export function ReferenceImport({
             remain raster images.
           </p>
           <div className="two-buttons">
+            {!!preview.src && onCanvas && (
+              <button
+                className="button button-accent"
+                disabled={
+                  busy ||
+                  readOnly ||
+                  !permission ||
+                  preview.kind === "inspiration"
+                }
+                onClick={() => void confirm("canvas")}
+              >
+                Add image layer
+              </button>
+            )}
             <button
               className="button button-accent"
               disabled={busy || readOnly || (!!preview.src && !permission)}
@@ -325,6 +363,13 @@ export function ReferenceImport({
               Cancel preview
             </button>
           </div>
+          {!!preview.src && onCanvas && (
+            <p className="quiet-note">
+              Add image layer places this raster image on your canvas after
+              saving a checkpoint. Choose Owned or Generated use. Its internal
+              text and shapes remain part of the image.
+            </p>
+          )}
         </fieldset>
       )}
       <input

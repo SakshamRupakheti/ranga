@@ -14,16 +14,20 @@ export function CreativeHandoff({
   onChange,
   onImport,
   onReference,
+  onCanvas,
   readOnly = false,
   initialMode = "brief",
+  downloadedFile,
 }: {
   document: DesignDocument;
   projectKey: string;
   onChange: (document: DesignDocument) => void;
   onImport: (request: RecipeImportRequest) => Promise<void>;
   onReference: (reference: Reference, projectKey: string) => Promise<void>;
+  onCanvas: (reference: Reference, projectKey: string) => Promise<void>;
   readOnly?: boolean;
   initialMode?: "brief" | "import";
+  downloadedFile?: File;
 }) {
   const [mode, setMode] = useState(initialMode);
   const brief = doc.brief ?? emptyBrief;
@@ -133,6 +137,8 @@ export function CreativeHandoff({
           readOnly={readOnly}
           onImport={onImport}
           onReference={onReference}
+          onCanvas={onCanvas}
+          downloadedFile={downloadedFile}
         />
       )}
     </>

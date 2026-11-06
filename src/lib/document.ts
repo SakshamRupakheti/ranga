@@ -94,6 +94,16 @@ export const layerSchema = z
     src: imageSchema.optional(),
     flipX: z.boolean().optional(),
     flipY: z.boolean().optional(),
+    assetInfo: z
+      .object({
+        kind: z.enum(["owned", "generated"]),
+        permissionConfirmed: z.literal(true),
+        sourceUrl: sourceUrlSchema.optional(),
+        note: z.string().max(2000).optional(),
+        addedAt: z.string().datetime(),
+      })
+      .strict()
+      .optional(),
   })
   .refine((l) => l.type !== "image" || !!l.src, {
     message: "Image layers must include a supported raster image.",
