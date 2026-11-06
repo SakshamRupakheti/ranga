@@ -1,5 +1,28 @@
 # Verification record
 
+## Canvas handoff and workflow completion, 2026-11-05
+
+Completed Discover and Bridge milestones 4 and 5 on `feature/ranga-workflow-completion`, based on `a43741d` from the creative-handoff branch. All five milestones are implemented in this checkout. [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1)
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` and `npm run lint` | Passed |
+| `npm test` | 20 passed, including the authenticated service, reconnect and restart tests |
+| `npm run build` | Passed with Webpack. All application routes generated |
+| `npm run test:e2e` | 29 passed in 4.3 minutes using isolated Chrome and ports 3011/3013 |
+| `npm test --prefix desktop` | 10 passed, including downloaded-file identity, size and format checks |
+| `npm run test:smoke --prefix desktop` | 3 passed using real Electron views and controlled website fixtures |
+
+The **62 automated tests** cover the existing editor and collaborative workflow as well as the new return path. Browser tests check image permission gating, precise fitted placement, saved attribution, a durable checkpoint, Undo/Redo, reload and full-resolution PNG pixels. A failed local checkpoint leaves the canvas and import preview available. An existing permitted reference can be promoted to a layer while its reference card stays intact. Shared tests exercise a failed upload and retry, concurrent edits during upload, and revocation while a checkpoint request is pending. An early test handler released its intercepted upload before it finished, causing a duplicate continuation in Playwright. The final run awaited the handled request and passed.
+
+The keyboard-driven phone test checks focus after opening the return panel and after generating the visual recipe preview. It verifies a known color in the preview and exported canvas, confirms the recipe keeps its editable text layer, and measures the page at 390 pixels wide. Existing tablet and desktop tests also passed. Actual screenshots were inspected. [Phone recipe preview](screenshots/recipe-preview-mobile.png) · [Imported raster layer](screenshots/image-handoff.png) · [Desktop recipe preview](screenshots/bring-into-ranga.png)
+
+Electron tests exercise a real completed download into a temporary test directory. They verify that delivery needs an explicit toolbar click, that the payload contains only name, type and bytes, and that dismissal, file changes, and project navigation invalidate the handoff. A stale canvas-focus command is ignored. The native window fits at its minimum width while the download offer is visible. A final check covered a file disappearing before the offer is prepared. The toolbar shows a recovery message and keeps the save path private. All ten desktop policy/file checks and the targeted native download test passed again. Test fixtures alone choose temporary save paths. The product retains Chromium's normal Save dialog.
+
+A separate production check ran the built Next.js app on port 3015 in Ranga Desktop with a temporary profile and controlled Pinterest/ChatGPT fixtures. It opened a project, searched, saved and selected a reference in the tray, added changes, explicitly copied the generated prompt, downloaded a recipe, previewed and applied it, returned to Focus, edited a native text layer, exported a portable backup, and reopened the saved design. The backup contained three editable layers, the selected reference and its instructions. The editor reported zero runtime errors. The temporary server and profile were cleaned up. [Completed design after reload](screenshots/completed-workflow.png)
+
+These results cover the local Windows workflow. Live third-party account sign-in, physical-device compatibility, hosted CI, and production deployment have separate release checks in [TASKS.md](../TASKS.md).
+
 ## Creative handoff milestone 3, 2026-11-05
 
 Built on `f47faa1` in `feature/ranga-creative-handoff`, stacked on the unmerged reference-tray branch and associated with [Ranga Bridge #1](https://github.com/SakshamRupakheti/ranga/issues/1).

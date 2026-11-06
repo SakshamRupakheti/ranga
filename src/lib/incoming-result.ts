@@ -3,6 +3,40 @@ import { recipeToDocument, compositionKey } from "./design-recipe";
 import { prepareReference, type ReferencePreview } from "./reference-import";
 
 export const RESULT_TEXT_LIMIT = 2_000_000;
+export function downloadedResultFile(value: unknown): File {
+  if (!value || typeof value !== "object")
+    throw new Error("The downloaded result is invalid. Choose the file again.");
+  const { name, type, data } = value as Record<string, unknown>;
+  if (
+    Object.keys(value).length !== 3 ||
+    typeof name !== "string" ||
+    !name ||
+    name.length > 120 ||
+    /[\\/\p{Cc}\p{Cf}]/u.test(name) ||
+    typeof type !== "string" ||
+    !["image/png", "image/jpeg", "image/webp", "application/json"].includes(
+      type,
+    ) ||
+    typeof data !== "string"
+  )
+    throw new Error(
+      "The downloaded result is invalid. Choose a PNG, JPG, WebP or JSON file.",
+    );
+  const limit =
+    type === "application/json" ? RESULT_TEXT_LIMIT : 5 * 1024 * 1024;
+  if (
+    !data ||
+    data.length > Math.ceil(limit / 3) * 4 ||
+    !/^[a-zA-Z0-9+/]+={0,2}$/.test(data)
+  )
+    throw new Error(
+      "The downloaded result is too large or invalid. Choose the file again.",
+    );
+  const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
+  if (bytes.length > limit)
+    throw new Error("The downloaded result is too large.");
+  return new File([bytes], name, { type });
+}
 export type IncomingResult =
   | {
       kind: "recipe";

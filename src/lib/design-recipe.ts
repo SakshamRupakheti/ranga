@@ -86,7 +86,15 @@ export function recipeToDocument(raw: string, existing: DesignDocument) {
       );
     if (e.type === "text" && !e.text)
       throw new Error(`“${e.name}” needs text content.`);
-    return newLayer(e.type, { ...props, ...(asset ? { src: asset.src } : {}) });
+    return newLayer(e.type, {
+      ...props,
+      ...(asset
+        ? {
+            src: asset.src,
+            ...(asset.assetInfo ? { assetInfo: asset.assetInfo } : {}),
+          }
+        : {}),
+    });
   });
   return documentSchema.parse({
     ...existing,

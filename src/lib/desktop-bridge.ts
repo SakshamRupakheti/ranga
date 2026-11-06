@@ -4,6 +4,11 @@ export type DiscoveryEvent =
   | { type: "query"; key: string; query: string }
   | { type: "references"; key: string }
   | { type: "bring"; key: string }
+  | {
+      type: "download";
+      key: string;
+      file: { name: string; type: string; data: string };
+    }
   | { type: "layout"; key: string; referenceOnly: boolean };
 declare global {
   interface Window {
@@ -18,6 +23,7 @@ declare global {
         } | null,
       ) => void;
       openChatGPT: () => void;
+      focusCanvas?: (key: string) => void;
       subscribe: (callback: (value: DiscoveryEvent) => void) => () => void;
     };
   }

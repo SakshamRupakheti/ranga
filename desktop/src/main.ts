@@ -15,6 +15,11 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { mkdirSync } from "node:fs";
 import {
+  recordDownload,
+  readCompletedDownload,
+  type CompletedDownload,
+} from "./download-handoff";
+import {
   allowedNavigation,
   externalUrl,
   isCommand,
@@ -91,6 +96,9 @@ let externalOpened = false;
 let message =
   "Describe a design to search Pinterest and prepare a ChatGPT prompt.";
 let pendingLink: string | undefined;
+let pendingDownload: { file: CompletedDownload; key: string } | undefined;
+let downloadBusy = false;
+let downloadEpoch = 0;
 
 function pageStatus(site: Site): string {
   const contents = views.get(site)?.webContents;
@@ -133,6 +141,11 @@ function publish() {
     prompt: discoveryPrompt(query, context),
     promptOpen,
     referenceTrayOpen: mode === "discover" && referenceTrayOpen,
+    downloadName:
+      pendingDownload?.key === context?.key
+        ? (pendingDownload?.file.name ?? "")
+        : "",
+    downloadBusy,
     ratio,
     pages: {
       ranga: pageStatus("ranga"),
@@ -172,7 +185,94 @@ function configureSession(ses: Session, site: Site) {
   ses.on("will-download", (_event, item) => {
     item.setSaveDialogOptions({ title: "Save a file from Ranga Workspace" });
     // No setSavePath: Chromium asks the user where to save. Never auto-open files.
+    if (site === "ranga") return;
+    const key = context?.editable ? context.key : undefined;
+    const epoch = downloadEpoch;
+    item.once("done", (_event, state) => {
+      if (!key || epoch !== downloadEpoch || context?.key !== key) return;
+      if (state !== "completed") {
+        message =
+          state === "cancelled"
+            ? "Download cancelled. No result was imported."
+            : "Download interrupted. Try the download again or choose a saved file in Ranga.";
+        publish();
+        return;
+      }
+      void recordDownload(item.getSavePath())
+        .then((file) => {
+          if (
+            epoch !== downloadEpoch ||
+            context?.key !== key ||
+            !context.editable
+          )
+            return;
+          pendingDownload = { file, key };
+          message = `Saved ${file.name}. Choose Import download to send it to Ranga for review.`;
+          publish();
+        })
+        .catch((error) => {
+          if (epoch !== downloadEpoch || context?.key !== key) return;
+          message =
+            error instanceof Error
+              ? error.message
+              : "The file was saved. Choose it in Ranga to preview it.";
+          publish();
+        });
+    });
   });
+}
+
+function clearDownload() {
+  downloadEpoch++;
+  pendingDownload = undefined;
+}
+
+async function importDownload() {
+  const record = pendingDownload,
+    epoch = downloadEpoch;
+  if (!record || downloadBusy) return;
+  if (
+    context?.key !== record.key ||
+    !context.editable ||
+    projectKey(views.get("ranga")?.webContents.getURL() ?? "", localUrl) !==
+      record.key
+  ) {
+    clearDownload();
+    publish();
+    return;
+  }
+  downloadBusy = true;
+  publish();
+  try {
+    const file = await readCompletedDownload(record.file);
+    if (
+      epoch !== downloadEpoch ||
+      pendingDownload !== record ||
+      context?.key !== record.key ||
+      !context.editable
+    )
+      return;
+    setMode("design");
+    views
+      .get("ranga")
+      ?.webContents.send("ranga:discovery", {
+        type: "download",
+        key: record.key,
+        file,
+      });
+    clearDownload();
+    message =
+      "File sent to Ranga. Preview it, confirm image permission if needed, then apply it when ready.";
+  } catch {
+    if (epoch === downloadEpoch) {
+      clearDownload();
+      message =
+        "The saved download is unavailable or changed. Use Choose file in Ranga to preview it again.";
+    }
+  } finally {
+    downloadBusy = false;
+    publish();
+  }
 }
 
 function protectContents(contents: WebContents, site: Site, popup = false) {
@@ -236,11 +336,13 @@ function protectContents(contents: WebContents, site: Site, popup = false) {
       if (context && context.key !== projectKey(contents.getURL(), localUrl)) {
         context = undefined;
         query = "";
+        clearDownload();
         publish();
       }
     };
     contents.on("did-start-navigation", (_event, _url, inPlace, mainFrame) => {
       if (mainFrame && !inPlace) {
+        clearDownload();
         context = undefined;
         query = "";
         publish();
@@ -278,6 +380,7 @@ function protectContents(contents: WebContents, site: Site, popup = false) {
   );
   contents.on("render-process-gone", () => {
     if (site === "ranga") {
+      clearDownload();
       context = undefined;
       query = "";
     }
@@ -553,12 +656,10 @@ function runCommand(command: Command) {
     case "bring":
       if (context) {
         setMode("design");
-        views
-          .get("ranga")
-          ?.webContents.send("ranga:discovery", {
-            type: "bring",
-            key: context.key,
-          });
+        views.get("ranga")?.webContents.send("ranga:discovery", {
+          type: "bring",
+          key: context.key,
+        });
         message = context.editable
           ? "Paste or choose a result in Ranga, then review its preview."
           : "This project is read-only. Choose an editable project to import a result.";
@@ -566,6 +667,13 @@ function runCommand(command: Command) {
         setMode("focus");
         message = "Open a Ranga project before bringing in a result.";
       }
+      break;
+    case "import-download":
+      void importDownload();
+      break;
+    case "dismiss-download":
+      clearDownload();
+      message = "Download handoff dismissed. Your saved file stays on disk.";
       break;
     case "open-link": {
       const url = pendingLink;
@@ -616,6 +724,7 @@ function trustedRanga(event: IpcMainEvent) {
 ipcMain.on("ranga:context", (event, value: unknown) => {
   if (!trustedRanga(event)) return;
   if (value === null) {
+    clearDownload();
     context = undefined;
     query = "";
     publish();
@@ -623,6 +732,7 @@ ipcMain.on("ranga:context", (event, value: unknown) => {
   }
   if (!validContext(value, projectKey(event.senderFrame!.url, localUrl)))
     return;
+  if (context?.key !== value.key || !value.editable) clearDownload();
   if (!context || context.key !== value.key || context.query !== value.query)
     query = value.query;
   context = value;
@@ -631,6 +741,16 @@ ipcMain.on("ranga:context", (event, value: unknown) => {
 });
 ipcMain.on("ranga:chatgpt", (event) => {
   if (trustedRanga(event)) focusChatGPT();
+});
+ipcMain.on("ranga:canvas", (event, key: unknown) => {
+  if (
+    trustedRanga(event) &&
+    context &&
+    context.key === key &&
+    context.editable &&
+    key === projectKey(event.senderFrame!.url, localUrl)
+  )
+    setMode("focus");
 });
 ipcMain.on("workspace:mode", (event, value: unknown) => {
   if (trusted(event) && isMode(value)) setMode(value);
@@ -702,6 +822,7 @@ function createWindow() {
     popups.clear();
     context = undefined;
     query = "";
+    clearDownload();
     window = undefined;
   });
   void window.loadFile(toolbarPath);
@@ -744,6 +865,11 @@ void app.whenReady().then(() => {
             label: "Focus Ranga",
             accelerator: "CmdOrCtrl+Alt+F",
             click: () => setMode("focus"),
+          },
+          {
+            label: "Bring into Ranga",
+            accelerator: "CmdOrCtrl+Alt+B",
+            click: () => runCommand("bring"),
           },
           { type: "separator" },
           { role: "quit" },

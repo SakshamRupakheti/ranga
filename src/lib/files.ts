@@ -43,6 +43,18 @@ export function download(data: Blob | string, filename: string) {
   a.click();
   if (isBlob) setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export function embeddedImageFile(src: string, name: string): File {
+  if (src.length > 7_000_000)
+    throw new Error("Choose an image smaller than 5 MB.");
+  const match =
+    /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(src);
+  if (!match) throw new Error("Choose a PNG, JPG, or WebP image.");
+  const bytes = Uint8Array.from(atob(match[2]), (character) =>
+    character.charCodeAt(0),
+  );
+  return new File([bytes], name, { type: match[1] });
+}
 export function safeFilename(name: string) {
   return (
     name

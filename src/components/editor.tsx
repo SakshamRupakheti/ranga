@@ -50,7 +50,13 @@ import {
   loadBrand,
   type SavedProject,
 } from "@/lib/storage";
-import { readImage, download, safeFilename } from "@/lib/files";
+import {
+  readImage,
+  download,
+  safeFilename,
+  embeddedImageFile,
+} from "@/lib/files";
+import { imageResultLayer } from "@/lib/image-handoff";
 import { api, post, imageData, type Session } from "@/lib/api";
 import { CollaborationClient } from "@/lib/collaboration-client";
 import {
@@ -79,6 +85,7 @@ import {
   compositionKey,
 } from "@/lib/design-recipe";
 import "@/lib/desktop-bridge";
+import { downloadedResultFile } from "@/lib/incoming-result";
 type Tab =
   "elements" | "references" | "brand" | "versions" | "assistant" | "team";
 export default function Editor() {
@@ -117,6 +124,7 @@ export default function Editor() {
   const [rightOpen, setRightOpen] = useState(true);
   const [referenceOnly, setReferenceOnly] = useState(false);
   const [handoffRequest, setHandoffRequest] = useState(0);
+  const [downloadedFile, setDownloadedFile] = useState<File | undefined>();
   const [referenceBusy, setReferenceBusy] = useState(false);
   const referencePending = useRef(false);
   const referenceEpoch = useRef(0);
@@ -298,7 +306,26 @@ export default function Editor() {
       if (event.type === "references") {
         setTab("references");
         setLeftOpen(true);
-      } else if (event.type === "bring") {
+      } else if (event.type === "bring" || event.type === "download") {
+        if (referencePending.current) {
+          setError(
+            "Wait for the current import to finish, then choose your result file again.",
+          );
+          return;
+        }
+        if (event.type === "download") {
+          if (!canEdit(access.current)) return;
+          try {
+            setDownloadedFile(downloadedResultFile(event.file));
+          } catch (error) {
+            setError(
+              error instanceof Error
+                ? error.message
+                : "The downloaded result could not be opened.",
+            );
+            return;
+          }
+        } else setDownloadedFile(undefined);
         setReferenceOnly(false);
         setPreviewMode(false);
         setTab("assistant");
@@ -394,6 +421,7 @@ export default function Editor() {
         references: [...latest.references, valid],
       });
       commit(next);
+      setDownloadedFile(undefined);
     } finally {
       referencePending.current = false;
       if (epoch === referenceEpoch.current) setReferenceBusy(false);
@@ -419,6 +447,74 @@ export default function Editor() {
     } finally {
       referencePending.current = false;
       setReferenceBusy(false);
+    }
+  }
+  async function addImageResult(reference: Reference, expectedKey: string) {
+    if (referencePending.current)
+      throw new Error("Wait for the current import to finish.");
+    const epoch = referenceEpoch.current;
+    function active() {
+      const latest = current.current;
+      const key = sharedId ? `shared:${sharedId}` : `local:${latest?.id}`;
+      if (!latest || key !== expectedKey || epoch !== referenceEpoch.current)
+        throw new Error(
+          "The destination changed. Preview the image in the intended project again.",
+        );
+      if (!canEdit(access.current))
+        throw new Error("You no longer have permission to edit this project.");
+      if (latest.layers.length >= 200)
+        throw new Error(
+          "This project already has 200 layers. Remove a layer before importing another.",
+        );
+      return latest;
+    }
+    const valid = validateReferenceImport(reference);
+    if (
+      !valid.src ||
+      !valid.permissionConfirmed ||
+      !["owned", "generated"].includes(valid.kind ?? "")
+    )
+      throw new Error(
+        "Choose Owned or Generated use and confirm permission before adding an image layer.",
+      );
+    active();
+    referencePending.current = true;
+    setReferenceBusy(true);
+    try {
+      const image = await readImage(
+        embeddedImageFile(await imageData(valid.src), valid.name),
+      );
+      active();
+      // Existing shared assets stay within their authorized project. New bytes
+      // use the same server decoder and asset endpoint as ordinary uploads.
+      if (sharedId)
+        image.src = valid.src.startsWith("/api/assets/")
+          ? valid.src
+          : (
+              await post<{ src: string }>(`/api/projects/${sharedId}/assets`, {
+                src: image.src,
+              })
+            ).src;
+      active();
+      await checkpoint();
+      const latest = active();
+      const layer = imageResultLayer(latest, valid, image);
+      if (!commit({ ...latest, layers: [...latest.layers, layer] }))
+        throw new Error("The image layer could not be added.");
+      setError("");
+      setSelected(layer.id);
+      setDownloadedFile(undefined);
+      setTab("elements");
+      setReferenceOnly(false);
+      setPreviewMode(false);
+      setNotice(
+        "Raster image added. Your previous design is saved in History; Undo is available.",
+      );
+      if (window.innerWidth <= 1050) setLeftOpen(false);
+      window.rangaBridge?.focusCanvas?.(expectedKey);
+    } finally {
+      referencePending.current = false;
+      if (epoch === referenceEpoch.current) setReferenceBusy(false);
     }
   }
   useEffect(() => {
@@ -552,30 +648,66 @@ export default function Editor() {
     return () => window.removeEventListener("keydown", key);
   });
   async function upload(file: File) {
+    if (referencePending.current) {
+      setError("Wait for the current import to finish.");
+      return;
+    }
+    const epoch = referenceEpoch.current,
+      destination = current.current?.id,
+      replaceId = replacing.current;
+    replacing.current = null;
+    const active = () => {
+      const latest = current.current;
+      if (
+        !latest ||
+        latest.id !== destination ||
+        epoch !== referenceEpoch.current
+      )
+        throw new Error(
+          "The destination changed. Choose the image in the intended project again.",
+        );
+      if (!canEdit(access.current))
+        throw new Error("You no longer have permission to edit this project.");
+      if (replaceId) {
+        const target = latest.layers.find((l) => l.id === replaceId);
+        if (!target || target.type !== "image" || target.locked)
+          throw new Error(
+            "The image to replace was removed or locked. Select it and try again.",
+          );
+      } else if (latest.layers.length >= 200)
+        throw new Error(
+          "This project already has 200 layers. Remove a layer before importing another.",
+        );
+      return latest;
+    };
+    referencePending.current = true;
+    setReferenceBusy(true);
     try {
       setError("");
+      active();
       const image = await readImage(file);
+      active();
       if (sharedId)
         image.src = (
           await post<{ src: string }>(`/api/projects/${sharedId}/assets`, {
             src: image.src,
           })
         ).src;
-      if (!current.current) return;
+      const latest = active();
       const ratio = Math.min(
         1,
-        (current.current.width * 0.65) / image.width,
-        (current.current.height * 0.65) / image.height,
+        (latest.width * 0.65) / image.width,
+        (latest.height * 0.65) / image.height,
       );
-      if (replacing.current) {
-        const id = replacing.current;
+      if (replaceId) {
         commit({
-          ...current.current,
-          layers: current.current.layers.map((l) =>
-            l.id === id
+          ...latest,
+          layers: latest.layers.map((l) =>
+            l.id === replaceId
               ? {
                   ...l,
                   src: image.src,
+                  assetInfo: undefined,
                   width: image.width * ratio,
                   height: image.height * ratio,
                 }
@@ -590,9 +722,11 @@ export default function Editor() {
           height: image.height * ratio,
         });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed.");
+      if (epoch === referenceEpoch.current)
+        setError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
-      replacing.current = null;
+      referencePending.current = false;
+      if (epoch === referenceEpoch.current) setReferenceBusy(false);
     }
   }
   async function exportFile(kind: "png" | "jpeg" | "svg" | "json") {
@@ -687,11 +821,14 @@ export default function Editor() {
       const next = recipeToDocument(request.raw, latest);
       if (!commit(next))
         throw new Error("The validated result could not be applied.");
+      setDownloadedFile(undefined);
       setError("");
       setSelected(null);
       setNotice(
         "Validated design imported. Your previous version is saved in History.",
       );
+      if (window.innerWidth <= 1050) setLeftOpen(false);
+      window.rangaBridge?.focusCanvas?.(request.projectKey);
     } finally {
       referencePending.current = false;
       if (epoch === referenceEpoch.current) setReferenceBusy(false);
@@ -936,6 +1073,7 @@ export default function Editor() {
                 setTab(t.id);
               }}
               aria-label={t.label}
+              aria-pressed={tab === t.id}
               title={t.label}
             >
               <t.icon size={19} />
@@ -1089,6 +1227,7 @@ export default function Editor() {
                 onChange={(references) => patch({ references })}
                 onDirection={(direction) => patch({ direction })}
                 onAdd={addReference}
+                onCanvas={addImageResult}
                 handoff={
                   <>
                     <ChangeInstructionFields
@@ -1277,6 +1416,8 @@ export default function Editor() {
               onChange={commit}
               onImport={applyReturnedRecipe}
               onReference={addReference}
+              onCanvas={addImageResult}
+              downloadedFile={downloadedFile}
             />
           )}
           {tab === "team" && sharedId && (

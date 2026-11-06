@@ -91,10 +91,43 @@ export function Properties({
     <section className="properties">
       <div className="panel-heading">
         <h2>{l ? "Properties" : "Canvas"}</h2>
-        <span>{l ? l.type : "DOCUMENT"}</span>
+        <span>
+          {l ? (l.type === "image" ? "Raster image" : l.type) : "DOCUMENT"}
+        </span>
       </div>
       {l ? (
         <>
+          {l.type === "image" && (
+            <div className="asset-attribution">
+              <p className="quiet-note">
+                Raster image. Move, resize or replace it; internal text and
+                shapes are flattened.
+              </p>
+              {l.assetInfo && (
+                <>
+                  <p className="quiet-note">
+                    {l.assetInfo.kind === "generated"
+                      ? "Generated asset"
+                      : "Owned / licensed asset"}{" "}
+                    · Permission confirmed
+                  </p>
+                  {l.assetInfo.sourceUrl && (
+                    <a
+                      className="text-link"
+                      href={l.assetInfo.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View image source
+                    </a>
+                  )}
+                  {l.assetInfo.note && (
+                    <p className="quiet-note">{l.assetInfo.note}</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           <label className="field">
             <span>Layer name</span>
             <input

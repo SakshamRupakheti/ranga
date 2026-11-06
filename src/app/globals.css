@@ -2808,3 +2808,41 @@ kbd {
 .bring-into-ranga .two-buttons {
   flex-wrap: wrap;
 }
+.design-preview {
+  margin: 12px 0;
+}
+.design-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: contain;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.design-preview figcaption {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 8px 0;
+}
+.reference-preview .two-buttons {
+  flex-wrap: wrap;
+}
+.asset-attribution {
+  overflow-wrap: anywhere;
+}
+.downloaded-result {
+  padding: 10px;
+  margin: 10px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  overflow-wrap: anywhere;
+}
+.reference-preview:focus-visible,
+.recipe-preview:focus-visible,
+.bring-into-ranga h3:focus-visible,
+.reference-drop-zone:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}

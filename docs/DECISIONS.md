@@ -67,3 +67,13 @@ Before replacing a composition, persist a checkpoint through the existing local/
 A `null` prompt sentinel deliberately invalidates native prompt copying above the 150 KB IPC bound instead of leaving stale instructions available. The full prompt remains copyable in the first-party panel. The desktop command and preload remain a closed vocabulary with no external scripting or clipboard-read privilege.
 
 Work is on `feature/ranga-creative-handoff`, stacked on the unmerged reference-tray branch. Integrated raster canvas handoff and visual recipe rendering remain Milestone 4. No main merge or public deployment is included.
+
+## 012: Complete the API-free return workflow with one document owner
+
+Accepted 2026-11-05 for Milestones 4–5. Extract the existing Fabric object builder so recipe previews and the editor render the same geometry, text and permitted assets. A disposable preview canvas owns no document, undo history or collaborative state. Do not apply a recipe until its preview renders and the existing checkpoint/staleness checks pass.
+
+Owned/generated image results require explicit permission confirmation. Append a fitted, centered raster layer through the existing commit/upload paths after saving a checkpoint. Preserve confirmed source/use/notes as optional layer metadata; recipe reuse keeps it and image replacement clears it. Recheck the current project, permissions and capacity after asynchronous work, merging into the latest shared document. Internal text and shapes in images remain flattened.
+
+Support the issue's optional completed-download handoff without monitoring directories. Keep one pending DownloadItem result in main-process memory, bound to the editable project where the download began. The user's toolbar import click permits a bounded read of that recorded file after identity and modification checks. Send only name/type/bytes to the first-party preview; never accept a renderer file path or give external panes a preload. Files require the normal preview and confirmation before modifying the project. Dismissal never deletes the saved download.
+
+The native Bring shortcut and fixed canvas-focus action, keyboard focus for previews, compact import layout, retry messages and regression coverage complete the primary local workflow. This does not expand the milestone into full Canva parity, cloud hosting, live provider compatibility, signed installers or a public release. The work remains on `feature/ranga-workflow-completion`, stacked on the unmerged creative-handoff branch for review.

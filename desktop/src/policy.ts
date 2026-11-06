@@ -120,6 +120,8 @@ export const commands = [
   "swap",
   "references",
   "bring",
+  "import-download",
+  "dismiss-download",
 ] as const;
 export type Command = (typeof commands)[number];
 export function isCommand(value: unknown): value is Command {
@@ -144,6 +146,8 @@ export type WorkspaceState = {
   prompt: string;
   promptOpen: boolean;
   referenceTrayOpen: boolean;
+  downloadName: string;
+  downloadBusy: boolean;
   ratio: number;
   pages: Record<Site, string>;
 };
